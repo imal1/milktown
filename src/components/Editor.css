@@ -1,0 +1,449 @@
+/* Milkdown编辑器容器 */
+.milkdown-editor {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  position: relative;
+}
+
+/* 加载动画 */
+.loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #666;
+  gap: 16px;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Milkdown 基础样式覆盖 */
+.milkdown {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: #ffffff;
+}
+
+/* Milkdown编辑器内容区域 */
+.milkdown .editor {
+  padding: 20px;
+  line-height: 1.6;
+  font-size: 16px;
+  min-height: 100%;
+  color: #24292f;
+}
+
+/* Milkdown工具栏样式调整 */
+.milkdown .milkdown-menu {
+  border-bottom: 1px solid #e1e4e8;
+  background-color: #f8f9fa;
+  padding: 8px 16px;
+}
+
+/* 确保编辑器占满高度 */
+.milkdown .ProseMirror {
+  min-height: 100%;
+  max-height: none;
+  outline: none;
+  padding: 20px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #24292f;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+/* 标题样式 */
+.milkdown h1,
+.milkdown h2,
+.milkdown h3,
+.milkdown h4,
+.milkdown h5,
+.milkdown h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  color: #1f2328;
+}
+
+.milkdown h1 {
+  font-size: 2em;
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 0.3em;
+}
+
+.milkdown h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 0.3em;
+}
+
+.milkdown h3 {
+  font-size: 1.25em;
+}
+
+/* 段落和文本样式 */
+.milkdown p {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #24292f;
+}
+
+/* 代码样式 */
+.milkdown code {
+  background-color: rgba(175, 184, 193, 0.2);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+  font-size: 85%;
+}
+
+.milkdown pre {
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  overflow: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+  margin-bottom: 16px;
+}
+
+.milkdown pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* 引用样式 */
+.milkdown blockquote {
+  margin: 0 0 16px 0;
+  padding-left: 16px;
+  border-left: 4px solid #d0d7de;
+  color: #656d76;
+}
+
+/* 列表样式 */
+.milkdown ul,
+.milkdown ol {
+  padding-left: 30px;
+  margin: 0 0 16px 0;
+}
+
+.milkdown li {
+  margin-bottom: 4px;
+}
+
+/* 任务列表样式 */
+.milkdown .task-list-item {
+  list-style: none;
+  margin-left: -20px;
+}
+
+.milkdown .task-list-item input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+/* 表格样式 */
+.milkdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+  border-spacing: 0;
+}
+
+.milkdown table th,
+.milkdown table td {
+  border: 1px solid #d0d7de;
+  padding: 6px 13px;
+}
+
+.milkdown table th {
+  background-color: #f6f8fa;
+  font-weight: 600;
+}
+
+/* 链接样式 */
+.milkdown a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.milkdown a:hover {
+  text-decoration: underline;
+}
+
+/* 水平分割线 */
+.milkdown hr {
+  border: none;
+  border-top: 1px solid #d0d7de;
+  margin: 24px 0;
+  height: 1px;
+}
+
+/* 图片样式 */
+.milkdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+/* 粗体和斜体 */
+.milkdown strong {
+  font-weight: 600;
+}
+
+.milkdown em {
+  font-style: italic;
+}
+
+/* 删除线 */
+.milkdown del {
+  text-decoration: line-through;
+}
+
+/* Crepe主题样式调整 */
+.milkdown .crepe-editor {
+  height: 100%;
+}
+
+/* 滚动条样式 */
+.milkdown ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.milkdown ::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.milkdown ::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.milkdown ::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .milkdown .editor {
+    padding: 16px;
+    font-size: 14px;
+  }
+  
+  .milkdown .ProseMirror {
+    padding: 16px;
+    font-size: 14px;
+  }
+}
+
+/* 保持原有的自定义编辑器样式（为向后兼容） */
+.editor-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e1e4e8;
+  gap: 16px;
+}
+
+.format-toolbar {
+  display: flex;
+  gap: 4px;
+}
+
+.format-toolbar button {
+  padding: 4px 8px;
+  border: 1px solid #d1d9e0;
+  border-radius: 4px;
+  background-color: #ffffff;
+  color: #24292f;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.format-toolbar button:hover {
+  background-color: #f3f4f6;
+  border-color: #c7d2fe;
+}
+
+.view-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.view-controls button {
+  padding: 4px 12px;
+  border: 1px solid #d1d9e0;
+  border-radius: 4px;
+  background-color: #ffffff;
+  color: #24292f;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-controls button:hover {
+  background-color: #f3f4f6;
+  border-color: #c7d2fe;
+}
+
+.view-controls button.active {
+  background-color: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.editor-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.markdown-textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 20px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  background-color: #ffffff;
+  color: #24292f;
+  overflow-y: auto;
+}
+
+.markdown-preview {
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: #ffffff;
+  color: #24292f;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+.markdown-preview h1 {
+  font-size: 2em;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 10px;
+  font-weight: 600;
+}
+
+.markdown-preview h2 {
+  font-size: 1.5em;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 10px;
+  font-weight: 600;
+}
+
+.markdown-preview h3 {
+  font-size: 1.25em;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.markdown-preview p {
+  margin-bottom: 16px;
+}
+
+.markdown-preview strong {
+  font-weight: 600;
+}
+
+.markdown-preview em {
+  font-style: italic;
+}
+
+.markdown-preview code {
+  background-color: rgba(175, 184, 193, 0.2);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 85%;
+}
+
+.markdown-preview pre {
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  overflow: auto;
+  margin-bottom: 16px;
+}
+
+.markdown-preview blockquote {
+  margin: 0 0 16px 0;
+  padding-left: 16px;
+  border-left: 4px solid #d0d7de;
+  color: #656d76;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 30px;
+  margin-bottom: 16px;
+}
+
+.markdown-preview li {
+  margin-bottom: 4px;
+}
+
+.markdown-preview a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.markdown-preview a:hover {
+  text-decoration: underline;
+}

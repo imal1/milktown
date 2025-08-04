@@ -1,0 +1,121 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e1e4e8;
+  min-height: 48px;
+  gap: 16px;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #24292f;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.toolbar-button:hover {
+  background-color: #f3f4f6;
+  border-color: #c7d2fe;
+}
+
+.toolbar-button:active {
+  background-color: #e5e7eb;
+  transform: translateY(1px);
+}
+
+.toolbar-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f6f8fa;
+}
+
+.toolbar-button.primary {
+  background-color: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.toolbar-button.primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.toolbar-button.primary:active {
+  background-color: #1e40af;
+}
+
+.file-info {
+  flex: 1;
+  justify-content: center;
+}
+
+.file-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  background-color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loading-indicator {
+  font-size: 16px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.app-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-left: 16px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .toolbar-section {
+    gap: 4px;
+  }
+  
+  .toolbar-button {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .file-name {
+    font-size: 12px;
+    max-width: 200px;
+  }
+}
