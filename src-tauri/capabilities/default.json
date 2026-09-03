@@ -5,8 +5,37 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-destroy",
+    "core:window:allow-start-dragging",
     "opener:default",
+    "dialog:default",
     "fs:default",
-    "dialog:default"
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "$HOME/**" }]
+    }
   ]
 }

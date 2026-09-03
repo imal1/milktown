@@ -1,125 +1,90 @@
 # Milktown
 
-一个基于 Tauri 和 React 构建的现代 Markdown 编辑器，灵感来自 Typora。
+一个所见即所得的本地 Markdown 编辑器，桌面应用，单文档模型。为作者本人日常写作而做，不为发布而做。
 
-## 功能特性
+窗口里只有两样东西：一条 34px 的标题栏，和一张纸。四个文件操作全部走快捷键，没有工具栏、没有文件树、没有标签页。
 
-- 🎨 **实时预览**: 在编辑和预览模式之间自由切换
-- 📝 **Markdown 支持**: 支持标准 Markdown 语法
-- 💾 **文件操作**: 新建、打开、保存 Markdown 文件
-- ⚡ **快捷键**: 丰富的键盘快捷键支持
-- 🖥️ **跨平台**: 基于 Tauri 的桌面应用
-- 🎯 **轻量级**: 快速启动，低内存占用
+保存时自动留存版本，随时能翻回三小时前看改了什么——这是自动时间机器，不是 git，你不写提交信息（ADR 0004）。
 
 ## 快捷键
 
-| 功能 | Windows/Linux | macOS |
-|------|---------------|-------|
-| 新建文档 | `Ctrl+N` | `Cmd+N` |
-| 打开文档 | `Ctrl+O` | `Cmd+O` |
-| 保存文档 | `Ctrl+S` | `Cmd+S` |
-| 另存为 | `Ctrl+Shift+S` | `Cmd+Shift+S` |
-| 切换预览 | `Ctrl+P` | `Cmd+P` |
+| 功能 | macOS | Windows/Linux |
+| --- | --- | --- |
+| 新建文档 | `⌘N` | `Ctrl+N` |
+| 最近文件面板 | `⌘O` | `Ctrl+O` |
+| 打开文件对话框 | `⇧⌘O` | `Ctrl+Shift+O` |
+| 保存 | `⌘S` | `Ctrl+S` |
+| 另存为 | `⇧⌘S` | `Ctrl+Shift+S` |
+| 版本对比（双页视图） | `⇧⌘H` | `Ctrl+Shift+H` |
+
+双页视图里：`↑` `↓` 选版本，`⏎` 把选中版本装回编辑器（不写盘，`⌘S` 才落盘），`Esc` 退出。
 
 ## 开发环境设置
 
 ### 前提条件
 
-- [Node.js](https://nodejs.org/) (版本 16+)
-- [Rust](https://rustlang.org/) (最新稳定版)
-- [Bun](https://bun.sh/) (可选，推荐)
+- [Node.js](https://nodejs.org/) 20+
+- [Rust](https://www.rust-lang.org/) 最新稳定版
 
-### 安装依赖
-
-```bash
-# 使用 bun (推荐)
-bun install
-
-# 或使用 npm
-npm install
-```
-
-### 开发模式
+### 常用命令
 
 ```bash
-# 启动开发服务器
-bun run tauri dev
-
-# 或使用 npm
-npm run tauri dev
-```
-
-### 构建应用
-
-```bash
-# 构建生产版本
-bun run tauri build
-
-# 或使用 npm
-npm run tauri build
+npm install          # 安装依赖
+npm run tauri dev    # 开发模式（起 Vite + Tauri 窗口）
+npm run test         # 跑测试
+npm run typecheck    # 类型检查（tsc --noEmit，只覆盖 .ts）
+npm run tauri build  # 打包
 ```
 
 ## 项目结构
 
 ```
 milktown/
-├── src/                     # React 前端源码
-│   ├── components/          # React 组件
-│   │   ├── Editor.tsx       # 主编辑器组件
-│   │   ├── Editor.css       # 编辑器样式
-│   │   ├── Toolbar.tsx      # 工具栏组件
-│   │   └── Toolbar.css      # 工具栏样式
-│   ├── App.tsx              # 主应用组件
-│   ├── App.css              # 应用样式
-│   └── main.tsx             # React 入口
+├── src/                     # Vue 3 前端源码
+│   ├── App.vue              # 应用外壳：状态、快捷键、各模块的接线处
+│   ├── components/          # 标题栏、最近文件面板、双页视图
+│   ├── editor/              # Crepe 封装与规范化模块
+│   ├── files/               # 文件读写与对话框（端口注入）
+│   ├── history/             # 版本存储与行级差异
+│   ├── recent/              # 最近文件
+│   ├── main.ts              # 入口
+│   └── styles.css           # 排版与主题
 ├── src-tauri/               # Tauri 后端
 │   ├── src/                 # Rust 源码
-│   ├── Cargo.toml           # Rust 依赖
-│   └── tauri.conf.json      # Tauri 配置
-└── package.json             # 前端依赖和脚本
+│   ├── capabilities/        # 文件系统与对话框权限
+│   └── tauri.conf.json      # Tauri 配置（无边框窗口）
+├── docs/adr/                # 架构决策记录
+├── CONTEXT.md               # 领域词汇表
+└── package.json
 ```
 
 ## 技术栈
 
-- **前端**: React 18 + TypeScript + Vite
-- **编辑器**: Milkdown Kit (完整版本)
-- **主题**: Nord Theme
-- **后端**: Tauri 2.0 + Rust
-- **样式**: CSS + Milkdown 主题
-- **构建工具**: Vite + Tauri CLI
+- **前端**：Vue 3 + TypeScript 7 + Vite 8
+- **编辑器**：Milkdown Crepe（十个编辑辅助 feature 全开）
+- **后端**：Tauri 2 + Rust
+- **测试**：Vitest（纯逻辑跑 node 环境，规范化跑 jsdom）
 
-## 特性说明
+## 设计约束
 
-### 编辑器功能
+读代码之前值得先读的四份文件：
 
-- **格式化工具栏**: 快速插入粗体、斜体、代码、链接等格式
-- **双模式编辑**: 在 Markdown 源码编辑和实时预览之间切换
-- **语法高亮**: 在编辑模式下提供基础的语法识别
-- **实时渲染**: 预览模式下实时渲染 Markdown 内容
-
-### 文件管理
-
-- **浏览器文件 API**: 支持打开本地 Markdown 文件
-- **自动保存**: 支持手动保存和快捷键保存
-- **文件状态指示**: 显示当前文件名和修改状态
+- `CONTEXT.md` —— 领域词汇表，「文档 / 文件 / 当前文件 / 脏 / 版本 / 规范化」等术语在这里钉死。
+- `docs/adr/0002-editor-owns-the-document.md` —— 编辑器是文档的唯一真相源，Vue 侧不存内容副本。
+- `docs/adr/0005-versions-live-next-to-the-file.md` —— 版本存在文件旁边的 `.milktown/` 里。
+- `docs/adr/0006-source-level-diff-and-canonical-markdown.md` —— 差异是源码级的，序列化风格被钉死。
 
 ## 开发计划
 
-- [x] 集成完整的 Milkdown 编辑器
-- [x] 实现基础文件操作（新建、打开、保存）
-- [x] 添加工具栏和快捷键支持
-- [x] 应用基础样式和布局
-- [ ] 添加更多 Markdown 扩展语法支持
-- [ ] 实现主题切换功能
-- [ ] 添加设置界面
-- [ ] 支持拖拽文件打开
-- [ ] 添加最近文件列表
-- [ ] 实现搜索和替换功能
-- [ ] 添加字数统计
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
+- [x] Vue + Crepe 骨架与测试框架
+- [x] 打开文件、保存与另存为
+- [x] 34px 标题栏与无边框窗口
+- [x] 最近文件
+- [x] 规范化模块与版本存储
+- [x] 双页视图与版本还原
+- [ ] 系统菜单栏入口
+- [ ] 本地相对路径图片（Tauri asset protocol）
+- [ ] 目录级版本与真 git（ADR 0004 的第二阶段）
 
 ## 许可证
 
@@ -128,6 +93,5 @@ milktown/
 ## 致谢
 
 - [Tauri](https://tauri.app/) - 现代桌面应用框架
-- [Milkdown](https://milkdown.dev/) - 强大的 Markdown 编辑器框架
-- [React](https://reactjs.org/) - 用户界面库
+- [Milkdown](https://milkdown.dev/) - Markdown 编辑器框架
 - [Typora](https://typora.io/) - 设计灵感来源

@@ -1,0 +1,98 @@
+@import '@milkdown/crepe/theme/common/style.css';
+@import '@milkdown/crepe/theme/frame.css';
+
+:root {
+  --paper: #fdfcf9;
+  --ink: #2e2a24;
+  --ink-soft: #5c564c;
+  --muted: #a39b8e;
+  --rule: #eeeae0;
+  --rule-soft: #f2eee4;
+  --highlight: #f0ece2;
+  --serif: 'Source Serif 4', 'Songti SC', serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --titlebar-height: 34px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* 写作区：66ch / 18px / 1.8，居中（1c 定稿）。 */
+.sheet {
+  width: 100%;
+  max-width: 66ch;
+  margin: 0 auto;
+}
+
+.milktown-editor .milkdown {
+  background: transparent;
+  padding: 0;
+}
+
+.milktown-editor .ProseMirror,
+.milktown-prose {
+  font-family: var(--serif);
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--ink);
+  padding: 0 0 60px;
+  outline: none;
+  text-wrap: pretty;
+}
+
+.milktown-editor .ProseMirror h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1.32;
+  letter-spacing: -0.012em;
+  margin: 0 0 0.7em;
+}
+
+.milktown-editor .ProseMirror blockquote {
+  margin: 0 0 0.85em;
+  padding-left: 20px;
+  border-left: 2px solid #e2dcce;
+  color: #6e675c;
+}
+
+.milktown-editor .ProseMirror code,
+.milktown-editor .ProseMirror pre {
+  font-family: var(--mono);
+  font-size: 0.85em;
+}
+
+.milktown-editor .ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85em;
+}
+
+.milktown-editor {
+  --crepe-color-background: var(--paper);
+  --crepe-color-surface: var(--paper);
+  --crepe-color-on-background: var(--ink);
+  --crepe-font-title: var(--serif);
+  --crepe-font-default: var(--serif);
+  --crepe-font-code: var(--mono);
+}
