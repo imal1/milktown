@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #E7E4DC; color: #322E28; -webkit-font-smoothing: antialiased; }
+  a { color: #3E5C86; text-decoration: none; }
+  a:hover { color: #2C4468; text-decoration: underline; }
+</style>
+</helmet>
+
+<div style="padding: 56px 56px 96px; font-family: 'Source Serif 4', 'Songti SC', serif; display: flex; flex-direction: column; gap: 72px;">
+
+<section style="display: flex; flex-direction: column; gap: 44px;">
+  <div style="display: flex; flex-direction: column; gap: 10px; max-width: 760px;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8378;">Turn 1 · Milktown · 编辑器之外的那一圈</div>
+    <div style="font-size: 30px; font-weight: 600; letter-spacing: -0.01em;">三套 paper × otty 方向</div>
+    <div style="font-size: 16px; line-height: 1.65; color: #5C564C; text-wrap: pretty;">共同前提：无边框窗口 + 自绘标题栏、单文档、无文件树无标签页、深色跟随系统。三套的差异在于「纸」被推到多远，以及那一条 chrome 到底留不留。参考 <a href="#1a">1a</a> / <a href="#1b">1b</a> / <a href="#1c">1c</a>，下面每套三屏：写作中、空状态、最近文件打开中。</div>
+  </div>
+
+  <div id="1a" style="display: flex; flex-direction: column; gap: 18px;">
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">1a</span>
+      <span style="font-size: 20px; font-weight: 600;">整页 · 桌面上浮着一张纸</span>
+      <span style="font-size: 14px; color: #6E675C;">纸有边界、有投影，chrome 只剩标题栏。最像「拿起一页纸写」，代价是写作区变窄。</span>
+    </div>
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+
+      <div data-screen-label="1a 写作中" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #D9D5CB; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column;">
+        <div style="height: 40px; flex: none; display: flex; align-items: center; padding: 0 14px; gap: 12px; background: #D2CDC2; border-bottom: 1px solid rgba(40,34,26,0.09);">
+          <div style="display: flex; gap: 8px;">
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4796B;"></div>
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4A96B;"></div>
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #8AA57C;"></div>
+          </div>
+          <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #4A443B;">写作工具的一点想法.md</span>
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #B5893F;" title="脏"></span>
+          </div>
+          <div style="width: 46px;"></div>
+        </div>
+        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 26px 0 0;">
+          <div style="width: 620px; background: #FBFAF5; border-radius: 3px 3px 0 0; box-shadow: 0 -1px 0 rgba(40,34,26,0.06), 0 10px 30px -12px rgba(40,34,26,0.30); padding: 44px 62px 0; overflow: hidden;">
+            <div style="--measure: 62ch; --body: 17px;">
+              <div style="max-width: var(--measure); font-size: var(--body); line-height: 1.72; color: #322E28;">
+                <div style="font-size: 26px; font-weight: 600; line-height: 1.3; margin-bottom: 14px; letter-spacing: -0.01em;">写作工具的一点想法</div>
+                <div style="margin-bottom: 14px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
+                <div style="border-left: 2px solid #C9C3B6; padding-left: 16px; color: #6E675C; font-style: italic; margin-bottom: 14px;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.6; background: #F1EEE5; border: 1px solid rgba(40,34,26,0.07); border-radius: 5px; padding: 12px 14px; color: #4A443B; margin-bottom: 14px;">$ milktown ~/notes/2026-09.md</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; font-size: 14px; border-top: 1px solid #DDD8CC;">
+                  <div style="padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8A8378; border-bottom: 1px solid #DDD8CC;">操作</div>
+                  <div style="padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8A8378; border-bottom: 1px solid #DDD8CC;">快捷键</div>
+                  <div style="padding: 7px 0; border-bottom: 1px solid #EAE6DC;">保存</div>
+                  <div style="padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px; border-bottom: 1px solid #EAE6DC;">⌘S</div>
+                  <div style="padding: 7px 0;">打开</div>
+                  <div style="padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">⌘O</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-screen-label="1a 空状态" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #D9D5CB; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column;">
+        <div style="height: 40px; flex: none; display: flex; align-items: center; padding: 0 14px; gap: 12px; background: #D2CDC2; border-bottom: 1px solid rgba(40,34,26,0.09);">
+          <div style="display: flex; gap: 8px;">
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4796B;"></div>
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4A96B;"></div>
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #8AA57C;"></div>
+          </div>
+          <div style="flex: 1; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8A8378;">未命名</div>
+          <div style="width: 46px;"></div>
+        </div>
+        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 26px 0 0;">
+          <div style="width: 620px; background: #FBFAF5; border-radius: 3px 3px 0 0; box-shadow: 0 -1px 0 rgba(40,34,26,0.06), 0 10px 30px -12px rgba(40,34,26,0.30); padding: 44px 62px 0; display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 2px; margin-bottom: 40px;">
+              <span style="font-size: 26px; font-weight: 600; color: #C2BBAE;">开始写</span>
+              <span style="width: 2px; height: 28px; background: #322E28;"></span>
+            </div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #A39B8E; margin-bottom: 14px;">最近文件</div>
+            <div style="display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid #EFEBE1;">
+                <span style="font-size: 15px;">2026-09.md</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/notes</span>
+              </div>
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid #EFEBE1;">
+                <span style="font-size: 15px;">ADR-0002 编辑器持有文档.md</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown/docs/adr</span>
+              </div>
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid #EFEBE1;">
+                <span style="font-size: 15px;">交接.md</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown</span>
+              </div>
+            </div>
+            <div style="margin-top: auto; padding: 20px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F; display: flex; gap: 18px;">
+              <span>⌘N 新建</span><span>⌘O 打开</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-screen-label="1a 最近文件" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #D9D5CB; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
+        <div style="height: 40px; flex: none; display: flex; align-items: center; padding: 0 14px; gap: 12px; background: #D2CDC2; border-bottom: 1px solid rgba(40,34,26,0.09);">
+          <div style="display: flex; gap: 8px;">
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4796B;"></div>
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4A96B;"></div>
+            <div style="width: 11px; height: 11px; border-radius: 50%; background: #8AA57C;"></div>
+          </div>
+          <div style="flex: 1; display: flex; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 7px; padding: 3px 10px; border-radius: 5px; background: #C4BEB1;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">写作工具的一点想法.md</span>
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: #B5893F;"></span>
+            </div>
+          </div>
+          <div style="width: 46px;"></div>
+        </div>
+        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 26px 0 0; filter: saturate(0.9);">
+          <div style="width: 620px; background: #FBFAF5; border-radius: 3px 3px 0 0; box-shadow: 0 10px 30px -12px rgba(40,34,26,0.30); padding: 44px 62px 0; opacity: 0.5;">
+            <div style="font-size: 26px; font-weight: 600; line-height: 1.3; margin-bottom: 14px;">写作工具的一点想法</div>
+            <div style="font-size: 17px; line-height: 1.72; color: #322E28;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
+          </div>
+        </div>
+        <div style="position: absolute; top: 44px; left: 50%; transform: translateX(-50%); width: 400px; background: #FDFCF8; border: 1px solid rgba(40,34,26,0.12); border-radius: 8px; box-shadow: 0 18px 40px -14px rgba(40,34,26,0.45); padding: 6px; display: flex; flex-direction: column;">
+          <div style="padding: 8px 12px 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #A39B8E;">最近文件</div>
+          <div style="padding: 8px 12px; border-radius: 5px; background: #EDE9DE; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 14px;">2026-09.md</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8378;">~/notes/2026-09.md</span>
+          </div>
+          <div style="padding: 8px 12px; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 14px;">ADR-0002 编辑器持有文档.md</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown/docs/adr</span>
+          </div>
+          <div style="padding: 8px 12px; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 14px;">交接.md</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown/交接.md</span>
+          </div>
+          <div style="margin: 6px 12px 8px; padding-top: 10px; border-top: 1px solid #EAE6DC; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F;">
+            <span>⌘O 打开其他…</span><span>↑↓ 选择</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="1b" style="display: flex; flex-direction: column; gap: 18px;">
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">1b</span>
+      <span style="font-size: 20px; font-weight: 600;">满窗 · 整个窗口就是纸</span>
+      <span style="font-size: 14px; color: #6E675C;">没有卡片边界、没有标题栏，只有行宽限制和一条 26px 状态条。写作区最大，otty 式的克制。</span>
+    </div>
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+
+      <div data-screen-label="1b 写作中" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FBFAF5; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
+        <div style="position: absolute; top: 15px; left: 15px; display: flex; gap: 8px; z-index: 2;">
+          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
+          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
+          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
+        </div>
+        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 62px 40px 0;">
+          <div style="--measure: 34rem; --body: 17px; width: 100%; display: flex; justify-content: center;">
+            <div style="max-width: var(--measure); width: 100%; font-family: 'Helvetica Neue', 'PingFang SC', sans-serif; font-size: var(--body); line-height: 1.78; color: #322E28;">
+              <div style="font-size: 24px; font-weight: 600; line-height: 1.34; margin-bottom: 18px; letter-spacing: -0.01em;">写作工具的一点想法</div>
+              <div style="margin-bottom: 16px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在——而这件事一条状态条就够了。</div>
+              <div style="border-left: 2px solid #D7D1C3; padding-left: 18px; color: #6E675C; margin-bottom: 16px;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.65; background: #F3F0E7; border-radius: 6px; padding: 13px 15px; color: #4A443B; margin-bottom: 16px;">$ milktown ~/notes/2026-09.md</div>
+              <div style="display: grid; grid-template-columns: 1fr 90px; font-size: 14px;">
+                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E4DFD3;">操作</div>
+                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E4DFD3;">键</div>
+                <div style="padding: 8px 0; border-bottom: 1px solid #F0ECE2;">保存</div>
+                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; border-bottom: 1px solid #F0ECE2;">⌘S</div>
+                <div style="padding: 8px 0;">另存为</div>
+                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace;">⇧⌘S</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="height: 26px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-top: 1px solid #EDE9DE; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A9285;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: #4A443B;">2026-09.md</span>
+            <span style="width: 5px; height: 5px; border-radius: 50%; background: #B5893F;"></span>
+            <span>未保存</span>
+          </div>
+          <div style="display: flex; gap: 16px;"><span>1,204 字</span><span>~/notes</span></div>
+        </div>
+      </div>
+
+      <div data-screen-label="1b 空状态" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FBFAF5; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
+        <div style="position: absolute; top: 15px; left: 15px; display: flex; gap: 8px;">
+          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
+          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
+          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
+        </div>
+        <div style="flex: 1; display: flex; justify-content: center; padding: 100px 40px 0;">
+          <div style="width: 34rem; font-family: 'Helvetica Neue', 'PingFang SC', sans-serif;">
+            <div style="display: flex; align-items: center; gap: 2px; margin-bottom: 52px;">
+              <span style="font-size: 24px; font-weight: 600; color: #C6BFB1;">写点什么</span>
+              <span style="width: 2px; height: 26px; background: #322E28;"></span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">
+                <span style="color: #C6BFB1; width: 14px;">1</span><span style="color: #322E28;">~/notes/2026-09.md</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">
+                <span style="color: #C6BFB1; width: 14px;">2</span><span style="color: #555047;">~/milktown/docs/adr/0002-editor-owns-the-document.md</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">
+                <span style="color: #C6BFB1; width: 14px;">3</span><span style="color: #555047;">~/milktown/交接.md</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">
+                <span style="color: #C6BFB1; width: 14px;">4</span><span style="color: #555047;">~/notes/2026-08.md</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="height: 26px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-top: 1px solid #EDE9DE; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A9285;">
+          <span>未命名</span>
+          <div style="display: flex; gap: 16px;"><span>⌘1–4 打开</span><span>⌘O 其他…</span></div>
+        </div>
+      </div>
+
+      <div data-screen-label="1b 最近文件" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FBFAF5; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
+        <div style="position: absolute; inset: 0; background: rgba(251,250,245,0.72);"></div>
+        <div style="flex: 1; padding: 62px 40px 0; display: flex; justify-content: center; opacity: 0.35;">
+          <div style="width: 34rem; font-family: 'Helvetica Neue', 'PingFang SC', sans-serif; font-size: 17px; line-height: 1.78;">
+            <div style="font-size: 24px; font-weight: 600; margin-bottom: 18px;">写作工具的一点想法</div>
+            <div>工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
+          </div>
+        </div>
+        <div style="position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 460px; background: #FDFCF8; border: 1px solid rgba(40,34,26,0.10); border-radius: 10px; box-shadow: 0 24px 50px -16px rgba(40,34,26,0.40); overflow: hidden;">
+          <div style="padding: 13px 16px; border-bottom: 1px solid #EFEBE1; display: flex; align-items: center; gap: 8px;">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #A39B8E;">›</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #322E28;">note</span>
+            <span style="width: 1.5px; height: 15px; background: #322E28;"></span>
+          </div>
+          <div style="padding: 6px;">
+            <div style="padding: 9px 12px; border-radius: 6px; background: #EDE9DE; display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">~/<b>note</b>s/2026-09.md</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8378;">2 小时前</span>
+            </div>
+            <div style="padding: 9px 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #555047;">~/<b>note</b>s/2026-08.md</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">上周</span>
+            </div>
+            <div style="padding: 9px 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #555047;">~/milktown/<b>note</b>-to-self.md</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">8 月</span>
+            </div>
+          </div>
+          <div style="padding: 10px 16px; border-top: 1px solid #EFEBE1; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F;">
+            <span>↵ 在本窗口打开</span><span>⌘↵ 新窗口</span>
+          </div>
+        </div>
+        <div style="height: 26px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-top: 1px solid #EDE9DE; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A9285;">
+          <span>2026-09.md</span><span>1,204 字</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="1c" style="display: flex; flex-direction: column; gap: 18px;">
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">1c</span>
+      <span style="font-size: 20px; font-weight: 600;">克制 · 纸白 + 一条发丝栏</span>
+      <span style="font-size: 14px; color: #6E675C;">没有纸纹、没有投影、没有桌面色。顶部 34px 一条栏，文件名本身就是最近文件入口，脏状态用 * 保留旧约定。</span>
+    </div>
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+
+      <div data-screen-label="1c 写作中" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column;">
+        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
+          <div style="display: flex; gap: 8px;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+          </div>
+          <div style="flex: 1; display: flex; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md *</span>
+              <span style="font-size: 9px; color: #A39B8E;">▾</span>
+            </div>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
+        </div>
+        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 48px 40px 0;">
+          <div style="--measure: 66ch; --body: 18px; width: 100%; display: flex; justify-content: center;">
+            <div style="max-width: var(--measure); width: 100%; font-size: var(--body); line-height: 1.8; color: #2E2A24;">
+              <div style="font-size: 27px; font-weight: 600; line-height: 1.32; margin-bottom: 20px; letter-spacing: -0.012em;">写作工具的一点想法</div>
+              <div style="margin-bottom: 18px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
+              <div style="padding-left: 20px; border-left: 2px solid #E2DCCE; color: #6E675C; margin-bottom: 18px;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; line-height: 1.7; border-top: 1px solid #EEEAE0; border-bottom: 1px solid #EEEAE0; padding: 12px 0; color: #4A443B; margin-bottom: 18px;">$ milktown ~/notes/2026-09.md</div>
+              <div style="display: grid; grid-template-columns: 1fr 100px; font-size: 15px;">
+                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E7E2D6;">操作</div>
+                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E7E2D6;">键</div>
+                <div style="padding: 8px 0; border-bottom: 1px solid #F2EEE4;">保存</div>
+                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 14px; border-bottom: 1px solid #F2EEE4;">⌘S</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-screen-label="1c 空状态" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column;">
+        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
+          <div style="display: flex; gap: 8px;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+          </div>
+          <div style="flex: 1; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">未命名 ▾</div>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #C6BFB1;">0</span>
+        </div>
+        <div style="flex: 1; display: flex; justify-content: center; padding: 48px 40px 0;">
+          <div style="width: 66ch; max-width: 100%;">
+            <div style="display: flex; align-items: center; gap: 2px; margin-bottom: 46px;">
+              <span style="font-size: 27px; font-weight: 600; color: #C9C2B4;">开始写</span>
+              <span style="width: 2px; height: 29px; background: #2E2A24;"></span>
+            </div>
+            <div style="border-top: 1px solid #EEEAE0; display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid #F2EEE4;">
+                <span style="font-size: 16px;">2026-09.md</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/notes · 2 小时前</span>
+              </div>
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid #F2EEE4;">
+                <span style="font-size: 16px;">0002 编辑器持有文档.md</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown/docs/adr · 昨天</span>
+              </div>
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid #F2EEE4;">
+                <span style="font-size: 16px;">交接.md</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown · 上周</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-screen-label="1c 最近文件" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
+        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
+          <div style="display: flex; gap: 8px;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #DFD9CC;"></div>
+          </div>
+          <div style="flex: 1; display: flex; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; background: #F0ECE2;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md *</span>
+              <span style="font-size: 9px; color: #6E675C;">▾</span>
+            </div>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
+        </div>
+        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 48px 40px 0; opacity: 0.4;">
+          <div style="width: 66ch; font-size: 18px; line-height: 1.8; color: #2E2A24;">
+            <div style="font-size: 27px; font-weight: 600; margin-bottom: 20px;">写作工具的一点想法</div>
+            <div>工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
+          </div>
+        </div>
+        <div style="position: absolute; top: 36px; left: 50%; transform: translateX(-50%); width: 340px; background: #FFFEFB; border: 1px solid rgba(40,34,26,0.10); border-radius: 7px; box-shadow: 0 14px 34px -12px rgba(40,34,26,0.35); padding: 5px 0;">
+          <div style="padding: 7px 14px; background: #F0ECE2; display: flex; align-items: baseline; justify-content: space-between; gap: 14px;">
+            <span style="font-size: 14px;">2026-09.md</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8378;">~/notes</span>
+          </div>
+          <div style="padding: 7px 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 14px;">
+            <span style="font-size: 14px; color: #555047;">0002 编辑器持有文档.md</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">…/adr</span>
+          </div>
+          <div style="padding: 7px 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 14px;">
+            <span style="font-size: 14px; color: #555047;">交接.md</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown</span>
+          </div>
+          <div style="margin: 5px 0 0; border-top: 1px solid #F2EEE4; padding: 8px 14px 4px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F;">
+            <span>打开其他… ⌘O</span><span>新建 ⌘N</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 18px;">
+  <div style="display: flex; align-items: baseline; gap: 14px;">
+    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">现状</span>
+    <span style="font-size: 20px; font-weight: 600;">旧实现复刻（对照用）</span>
+    <span style="font-size: 14px; color: #6E675C;">按 Toolbar.css / Editor.css / App.css 原值复刻：48px 工具栏、四个 emoji 按钮、#2563eb 主按钮、圆角文件名胶囊、20px 内边距的 16px/1.6 正文。</span>
+  </div>
+  <div data-screen-label="现状 旧实现" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #ffffff; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; font-family: -apple-system, 'Helvetica Neue', 'PingFang SC', sans-serif;">
+    <div style="min-height: 48px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 16px; background: #f8f9fa; border-bottom: 1px solid #e1e4e8;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #ffffff; color: #24292f; font-size: 14px; font-weight: 500;">📄 新建</div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #ffffff; color: #24292f; font-size: 14px; font-weight: 500;">📂 打开</div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #2563eb; border-radius: 6px; background: #2563eb; color: #ffffff; font-size: 14px; font-weight: 500;">💾 保存</div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #ffffff; color: #24292f; font-size: 14px; font-weight: 500;">📝 另存为</div>
+      </div>
+      <div style="flex: 1; display: flex; justify-content: center;">
+        <span style="font-size: 14px; font-weight: 500; color: #374151; background: #ffffff; padding: 4px 12px; border-radius: 16px; border: 1px solid #e5e7eb;">2026-09.md *</span>
+      </div>
+      <span style="font-size: 14px; font-weight: 600; color: #374151; margin-left: 16px;">Milktown</span>
+    </div>
+    <div style="flex: 1; overflow: hidden; padding: 20px; font-size: 16px; line-height: 1.6; color: #24292f;">
+      <div style="font-size: 2em; font-weight: 600; color: #1f2328; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-bottom: 0.5em;">写作工具的一点想法</div>
+      <div style="margin-bottom: 16px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
+      <div style="margin: 0 0 16px; padding-left: 16px; border-left: 4px solid #d0d7de; color: #656d76;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
+      <div style="background: #f6f8fa; border-radius: 6px; padding: 16px; font-family: Monaco, Menlo, monospace; font-size: 85%; margin-bottom: 16px;">$ milktown ~/notes/2026-09.md</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; font-size: 16px;">
+        <div style="border: 1px solid #d0d7de; padding: 6px 13px; background: #f6f8fa; font-weight: 600;">操作</div>
+        <div style="border: 1px solid #d0d7de; border-left: none; padding: 6px 13px; background: #f6f8fa; font-weight: 600;">快捷键</div>
+        <div style="border: 1px solid #d0d7de; border-top: none; padding: 6px 13px;">保存</div>
+        <div style="border: 1px solid #d0d7de; border-top: none; border-left: none; padding: 6px 13px;">⌘S</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
