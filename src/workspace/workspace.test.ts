@@ -11,6 +11,8 @@ import { createFileService } from '../files/file-service'
 import { createMemoryFileSystem } from '../files/memory-ports'
 import { createHistory } from '../history/version-store'
 import { createRecentFiles, type KeyValuePort } from '../recent/recent-files'
+import type { WindowsPort } from '../windows/windows'
+import { createDrafts } from './drafts'
 import type { ConfirmChoice } from './workspace'
 import { createWorkspace } from './workspace'
 
@@ -54,6 +56,8 @@ function setup(options: {
   confirm?: ConfirmChoice
   pickToOpen?: string | null
   pickToSave?: string | null
+  /** 这些文件被别的窗口开着，再打开它们只会聚焦过去。 */
+  openElsewhere?: string[]
 } = {}) {
   const fs = createMemoryFileSystem(options.seed ?? {})
   let clock = Date.parse('2026-09-04T10:00:00.000Z')
@@ -70,10 +74,23 @@ function setup(options: {
     alert,
   }
 
+  const drafts = createDrafts(memoryStore())
+  const claimed: (string | null)[] = []
+  const opened: string[][] = []
+  const windows: WindowsPort = {
+    claim: async (path) => void claimed.push(path),
+    focusIfOpen: async (path) => (options.openElsewhere ?? []).includes(path),
+    openFiles: async (paths) => void opened.push(paths),
+    openDrafts: async () => {},
+    boot: async () => ({ path: null, draft: null, startupPaths: [] }),
+  }
+
   const workspace = createWorkspace({
     files: createFileService(fs, dialog),
     history: createHistory(fs, { now }),
     recent: createRecentFiles(memoryStore()),
+    drafts,
+    windows,
     pickFileToOpen: dialog.pickFileToOpen,
     alert,
     confirm,
@@ -94,6 +111,9 @@ function setup(options: {
     confirm,
     closeWindow,
     editors,
+    drafts,
+    claimed,
+    opened,
     current: () => editors[editors.length - 1]!,
     advance: (ms: number) => {
       clock += ms
@@ -259,9 +279,10 @@ describe('工作区 · 关窗与确认', () => {
     expect(t.closeWindow).toHaveBeenCalled()
   })
 
-  it('脏文档选「取消」时窗口不关', async () => {
-    const t = setup({ confirm: 'cancel' })
+  it('有文件的脏文档选「取消」时窗口不关', async () => {
+    const t = setup({ seed: { '/notes/a.md': '旧' }, confirm: 'cancel' })
     await t.start()
+    await t.workspace.openPath('/notes/a.md')
     t.current().type('写了一半')
 
     await t.workspace.requestClose()
@@ -269,32 +290,38 @@ describe('工作区 · 关窗与确认', () => {
     expect(t.closeWindow).not.toHaveBeenCalled()
   })
 
-  it('脏文档选「不保存」时直接关，内容不落盘', async () => {
-    const t = setup({ confirm: 'discard' })
+  it('有文件的脏文档选「不保存」时直接关，内容不落盘', async () => {
+    const t = setup({ seed: { '/notes/a.md': '旧' }, confirm: 'discard' })
     await t.start()
+    await t.workspace.openPath('/notes/a.md')
     t.current().type('写了一半')
 
     await t.workspace.requestClose()
 
     expect(t.closeWindow).toHaveBeenCalled()
-    expect(t.fs.files.size).toBe(0)
+    expect(t.fs.files.get('/notes/a.md')).toBe('旧')
   })
 
-  it('脏文档选「保存」时先落盘再关', async () => {
-    const t = setup({ confirm: 'save', pickToSave: '/notes/新建.md' })
+  it('有文件的脏文档选「保存」时先落盘再关', async () => {
+    const t = setup({ seed: { '/notes/a.md': '旧' }, confirm: 'save' })
     await t.start()
+    await t.workspace.openPath('/notes/a.md')
     t.current().type('写了一半')
 
     await t.workspace.requestClose()
 
-    expect(t.fs.files.get('/notes/新建.md')).toBe('写了一半')
+    expect(t.fs.files.get('/notes/a.md')).toBe('写了一半')
     expect(t.closeWindow).toHaveBeenCalled()
   })
 
-  it('选「保存」但保存被取消时，窗口不关', async () => {
-    const t = setup({ confirm: 'save', pickToSave: null })
+  it('选「保存」但写入失败时，窗口不关', async () => {
+    const t = setup({ seed: { '/notes/a.md': '旧' }, confirm: 'save' })
     await t.start()
+    await t.workspace.openPath('/notes/a.md')
     t.current().type('写了一半')
+    t.fs.writeTextFile = async () => {
+      throw new Error('EACCES')
+    }
 
     await t.workspace.requestClose()
 
@@ -531,5 +558,135 @@ describe('工作区 · 源码模式', () => {
     await t.workspace.run('source.toggle')
 
     expect(t.workspace.findOpen.value).toBe(false)
+  })
+})
+
+describe('工作区 · 草稿', () => {
+  it('关窗时脏且没有文件，落一份草稿且不弹确认框', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('半夜想到的三件事')
+
+    await t.workspace.requestClose()
+
+    expect(t.confirm).not.toHaveBeenCalled()
+    expect(t.closeWindow).toHaveBeenCalled()
+    expect(t.drafts.list().map((d) => d.content)).toEqual(['半夜想到的三件事'])
+  })
+
+  it('内容被删光的脏文档关窗不留草稿，也不弹确认框', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('一句话')
+    t.current().type('   ')
+
+    await t.workspace.requestClose()
+
+    expect(t.confirm).not.toHaveBeenCalled()
+    expect(t.closeWindow).toHaveBeenCalled()
+    expect(t.drafts.list()).toEqual([])
+  })
+
+  it('干净的空文档关窗不留草稿', async () => {
+    const t = setup()
+    await t.start()
+
+    await t.workspace.requestClose()
+
+    expect(t.drafts.list()).toEqual([])
+  })
+
+  it('有文件的脏文档关窗走确认框，不留草稿', async () => {
+    const t = setup({ seed: { '/notes/a.md': '旧' }, confirm: 'discard' })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+    t.current().type('写了一半')
+
+    await t.workspace.requestClose()
+
+    expect(t.confirm).toHaveBeenCalled()
+    expect(t.drafts.list()).toEqual([])
+  })
+
+  it('装回来的草稿是脏的，且没有当前文件', async () => {
+    const t = setup()
+    await t.start()
+
+    await t.workspace.restoreDraft({ id: 'd1', content: '恢复的内容', at: 100 })
+
+    expect(t.current().editor.read()).toBe('恢复的内容')
+    expect(t.workspace.dirty.value).toBe(true)
+    expect(t.workspace.currentPath.value).toBeNull()
+    expect(t.workspace.toast.value).toBe('已恢复上次未保存的草稿 · ⌘S 存成文件')
+  })
+
+  it('恢复出来的窗口再关一次是覆盖原来那份，不是新增', async () => {
+    const t = setup()
+    await t.start()
+    t.drafts.put('第一版', 100, 'd1')
+    await t.workspace.restoreDraft({ id: 'd1', content: '第一版', at: 100 })
+    t.current().type('第二版')
+
+    await t.workspace.requestClose()
+
+    expect(t.drafts.list()).toEqual([{ id: 'd1', content: '第二版', at: expect.any(Number) }])
+  })
+
+  it('草稿在内容真正存成文件之后才删', async () => {
+    const t = setup({ pickToSave: '/notes/新建.md' })
+    await t.start()
+    t.drafts.put('内容', 100, 'd1')
+    await t.workspace.restoreDraft({ id: 'd1', content: '内容', at: 100 })
+
+    await t.workspace.run('save')
+
+    expect(t.fs.files.get('/notes/新建.md')).toBe('内容')
+    expect(t.drafts.list()).toEqual([])
+  })
+
+  it('另存为被取消时草稿留着', async () => {
+    const t = setup({ pickToSave: null })
+    await t.start()
+    t.drafts.put('内容', 100, 'd1')
+    await t.workspace.restoreDraft({ id: 'd1', content: '内容', at: 100 })
+
+    await t.workspace.run('save')
+
+    expect(t.drafts.list()).toHaveLength(1)
+  })
+
+  it('恢复出来之后打开别的文件，草稿仍然留着', async () => {
+    const t = setup({ seed: { '/notes/a.md': 'A' } })
+    await t.start()
+    t.drafts.put('内容', 100, 'd1')
+    await t.workspace.restoreDraft({ id: 'd1', content: '内容', at: 100 })
+
+    await t.workspace.openPath('/notes/a.md')
+    await t.workspace.run('save')
+
+    expect(t.drafts.list()).toHaveLength(1)
+  })
+})
+
+describe('工作区 · 多窗口', () => {
+  it('文件已在别的窗口开着时静默聚焦，本窗口什么都不变', async () => {
+    const t = setup({ seed: { '/notes/a.md': 'A' }, openElsewhere: ['/notes/a.md'] })
+    await t.start()
+    t.current().type('写了一半')
+
+    await t.workspace.openPath('/notes/a.md')
+
+    expect(t.workspace.currentPath.value).toBeNull()
+    expect(t.confirm).not.toHaveBeenCalled()
+    expect(t.current().editor.read()).toBe('写了一半')
+  })
+
+  it('装上文件与清空文件都告诉注册表', async () => {
+    const t = setup({ seed: { '/notes/a.md': 'A' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+    await t.workspace.run('new')
+
+    expect(t.claimed).toEqual(['/notes/a.md', null])
   })
 })

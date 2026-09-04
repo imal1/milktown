@@ -1,4 +1,4 @@
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 
 import type { DocumentEditor } from '../editor/editor'
 import { fileNameOf, type FileService } from '../files/file-service'
@@ -6,6 +6,8 @@ import type { DiffLine } from '../history/line-diff'
 import { lineDiff } from '../history/line-diff'
 import type { History, Version } from '../history/version-store'
 import type { RecentFile, RecentFiles } from '../recent/recent-files'
+import type { WindowsPort } from '../windows/windows'
+import type { Draft, Drafts } from './drafts'
 import type { Intent } from './keymap'
 
 /** 三选一确认的结果。系统对话框只有两个按钮，所以这个由应用自绘。 */
@@ -15,6 +17,8 @@ export interface WorkspaceDeps {
   files: FileService
   history: History
   recent: RecentFiles
+  drafts: Drafts
+  windows: WindowsPort
   pickFileToOpen: () => Promise<string | null>
   alert: (message: string) => Promise<void>
   confirm: (question: string) => Promise<ConfirmChoice>
@@ -60,12 +64,17 @@ export function createWorkspace(deps: WorkspaceDeps) {
   let pendingOpenVersion: { path: string; content: string; at: Date } | null = null
   /** 还原之后的第一次保存必须留下新版本，让「曾经还原过」在历史中可见。 */
   let forceNextKeep = false
+  /** 本窗口那份草稿。装回来的和自己落下的都用同一个 id，反复关窗是覆盖（ADR 0010）。 */
+  let draftId: string | null = null
   let toastTimer: ReturnType<typeof setTimeout> | undefined
 
   const fileName = computed(() => (currentPath.value ? fileNameOf(currentPath.value) : '未命名'))
   const showEmptyState = computed(
     () => currentPath.value === null && !dirty.value && words.value === 0 && !sourceMode.value
   )
+
+  // 注册表要知道本窗口装着哪个文件，别的窗口才能判断「已经开着了」（ADR 0011）。
+  watch(currentPath, (path) => void deps.windows.claim(path))
 
   /** 文档只向当前持有真相源的那一方索取（ADR 0002 / 0009）。 */
   function currentMarkdown(): string {
@@ -81,10 +90,10 @@ export function createWorkspace(deps: WorkspaceDeps) {
     words.value = markdown.trim().length
   }
 
-  function flash(text: string) {
+  function flash(text: string, ms = 1800) {
     toast.value = text
     clearTimeout(toastTimer)
-    toastTimer = setTimeout(() => (toast.value = ''), 1800)
+    toastTimer = setTimeout(() => (toast.value = ''), ms)
   }
 
   async function report(error: unknown) {
@@ -188,6 +197,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
 
   async function openPath(path: string) {
     if (busy()) return
+    // 已经在别的窗口开着就静默聚焦那边，本窗口什么都不做——连确认框都不弹（ADR 0011）。
+    if (await deps.windows.focusIfOpen(path)) return
     if (!(await settleDirty('打开另一个文件'))) return
 
     let content: string
@@ -200,6 +211,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
     }
 
     await keepOnLeave()
+    // 手上那份内容仍然没有文件，它的草稿留着（ADR 0010）。
+    draftId = null
     // 先把编辑器换好再改状态：挂载失败时不能留下「路径指向新文件、
     // 编辑器里还是旧文档」这种半截状态。
     await mountDocument(content)
@@ -229,6 +242,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     if (!(await settleDirty('新建文档'))) return
     await keepOnLeave()
     await mountDocument('')
+    draftId = null
     currentPath.value = null
     pendingOpenVersion = null
     dirty.value = false
@@ -264,6 +278,11 @@ export function createWorkspace(deps: WorkspaceDeps) {
       // ponytail: 不检测文件在打开之后是否被别的程序改过，直接覆盖。
       // 要做的话得记 mtime、保存前比对、再设计冲突界面——那是独立一票。
       dirty.value = false
+      // 草稿只在内容真正存成文件之后才删（ADR 0010）。
+      if (draftId) {
+        deps.drafts.remove(draftId)
+        draftId = null
+      }
       flash(
         `已保存 · ${deps.now().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
       )
@@ -352,7 +371,14 @@ export function createWorkspace(deps: WorkspaceDeps) {
   async function requestClose() {
     if (busy()) return
     try {
-      if (!(await settleDirty('关闭'))) return
+      // 脏且没有文件可写时留一份草稿，不问——确认对话框服务的是有文件那种（ADR 0010）。
+      const keep = dirty.value && !currentPath.value ? currentMarkdown() : null
+      if (keep !== null) {
+        // 空白的脏文档没什么好留的，也没什么好问的。
+        if (keep.trim()) draftId = deps.drafts.put(keep, deps.now().getTime(), draftId ?? undefined)
+      } else if (!(await settleDirty('关闭'))) {
+        return
+      }
       await keepOnLeave()
       await deps.closeWindow()
     } catch (error) {
@@ -440,6 +466,14 @@ export function createWorkspace(deps: WorkspaceDeps) {
     dirty.value = false
   }
 
+  /** 装回一份草稿：文档是脏的，且没有当前文件——⌘S 走另存为（ADR 0010）。 */
+  async function restoreDraft(draft: Draft) {
+    draftId = draft.id
+    await mountDocument(draft.content)
+    dirty.value = true
+    flash('已恢复上次未保存的草稿 · ⌘S 存成文件', 6000)
+  }
+
   async function destroy() {
     clearTimeout(toastTimer)
     await editor.value?.destroy()
@@ -476,6 +510,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     selectVersion,
     restoreVersion,
     requestClose,
+    restoreDraft,
     toggleRecent,
     toggleSourceMode,
     editSource,
