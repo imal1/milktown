@@ -118,16 +118,16 @@ watch(
     <div v-if="findOpen" class="findbar">
       <div class="line">
         <span class="label">查找</span>
-        <input ref="find" v-model="query" class="field" spellcheck="false" @keydown.enter.prevent="go($event.shiftKey ? -1 : 1)" />
+        <input ref="find" v-model="query" class="field" aria-label="查找" spellcheck="false" @keydown.enter.prevent="go($event.shiftKey ? -1 : 1)" />
         <span class="count" :class="{ none: matches.length === 0 }">
           {{ matches.length === 0 ? 0 : current + 1 }} / {{ matches.length }}
         </span>
-        <button class="step" @click="go(-1)">↑</button>
-        <button class="step" @click="go(1)">↓</button>
+        <button class="step" aria-label="上一个匹配" @click="go(-1)">↑</button>
+        <button class="step" aria-label="下一个匹配" @click="go(1)">↓</button>
       </div>
       <div class="line">
         <span class="label">替换</span>
-        <input v-model="replacement" class="field" spellcheck="false" @keydown.enter.prevent="replaceOne()" />
+        <input v-model="replacement" class="field" aria-label="替换为" spellcheck="false" @keydown.enter.prevent="replaceOne()" />
         <button class="act" @click="replaceOne()">替换</button>
         <button class="act" @click="replaceAll()">全部</button>
       </div>

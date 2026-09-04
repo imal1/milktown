@@ -82,9 +82,10 @@ function onKeydown(event: KeyboardEvent) {
 async function boot() {
   const info = await tauriWindows.boot()
   const plan = planBoot({
-    path: info.path,
+    // 后缀在这一处认（ADR 0011）；Rust 那边只管把参数原样递过来，
+    // 所以被指派的那个也要过一遍同一份清单，不能只筛启动参数。
+    path: info.path && isOpenable(info.path) ? info.path : null,
     draft: info.draft,
-    // 后缀在这一处认（ADR 0011）；Rust 那边只管把参数原样递过来。
     startupPaths: info.startupPaths.filter(isOpenable),
     draftIds: drafts.list().map((draft) => draft.id),
   })
