@@ -56,7 +56,7 @@ milktown/
 ├── src-tauri/               # Tauri 后端
 │   ├── src/                 # Rust 源码
 │   ├── capabilities/        # 文件系统与对话框权限
-│   └── tauri.conf.json      # Tauri 配置（无边框窗口）
+│   └── tauri.conf.json      # Tauri 配置（原生窗口 + 覆盖式标题栏）
 ├── docs/adr/                # 架构决策记录
 ├── CONTEXT.md               # 领域词汇表
 └── package.json

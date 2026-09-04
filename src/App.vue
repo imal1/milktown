@@ -95,7 +95,6 @@ onBeforeUnmount(async () => {
       :words="workspace.words.value"
       :recent-open="workspace.recentOpen.value"
       @toggle-recent="workspace.toggleRecent()"
-      @close="workspace.requestClose()"
     />
 
     <div class="canvas">

@@ -6,31 +6,26 @@ defineProps<{
   recentOpen: boolean
 }>()
 
-const emit = defineEmits<{ toggleRecent: []; close: [] }>()
-
-// 关闭要先问脏文档，所以交给应用处理；另外两个直接调窗口。
-async function windowAction(action: 'minimize' | 'toggleMaximize') {
-  const { getCurrentWindow } = await import('@tauri-apps/api/window')
-  await getCurrentWindow()[action]()
-}
+const emit = defineEmits<{ toggleRecent: [] }>()
 </script>
 
 <template>
+  <!--
+    窗口是原生的（macOS 的 Overlay 标题栏样式）：圆角、阴影、交通灯、
+    双击标题栏放大都归系统。这里只画交通灯右边的那一条，并整体作为
+    拖拽区——webview 盖住了标题栏，拖动得由 data-tauri-drag-region 交回系统。
+  -->
   <div class="titlebar" data-tauri-drag-region>
-    <div class="lights">
-      <button class="light close" title="关闭" @click="emit('close')" />
-      <button class="light min" title="最小化" @click="windowAction('minimize')" />
-      <button class="light zoom" title="缩放" @click="windowAction('toggleMaximize')" />
-    </div>
+    <div class="lights-space" data-tauri-drag-region />
 
-    <div class="center">
+    <div class="center" data-tauri-drag-region>
       <button class="title" :class="{ on: recentOpen }" @click="emit('toggleRecent')">
         <span class="name">{{ fileName }}{{ dirty ? ' *' : '' }}</span>
         <span class="caret">▾</span>
       </button>
     </div>
 
-    <span class="words">{{ words }}</span>
+    <span class="words" data-tauri-drag-region>{{ words }}</span>
   </div>
 </template>
 
@@ -46,29 +41,10 @@ async function windowAction(action: 'minimize' | 'toggleMaximize') {
   user-select: none;
 }
 
-.lights {
-  display: flex;
-  gap: 8px;
-}
-
-.light {
-  width: 10px;
-  height: 10px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: #dfd9cc;
-  cursor: pointer;
-}
-
-.lights:hover .close {
-  background: #e8705f;
-}
-.lights:hover .min {
-  background: #e2b04a;
-}
-.lights:hover .zoom {
-  background: #79b25a;
+/* 系统交通灯就画在这块位置上，给它让出来。 */
+.lights-space {
+  width: 56px;
+  flex: none;
 }
 
 .center {
