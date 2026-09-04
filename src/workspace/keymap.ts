@@ -17,6 +17,9 @@ export type Intent =
   | 'diff.next'
   | 'diff.restore'
   | 'diff.close'
+  | 'source.toggle'
+  | 'find.open'
+  | 'find.close'
   | 'confirm.save'
   | 'confirm.discard'
   | 'confirm.cancel'
@@ -24,8 +27,8 @@ export type Intent =
   /** 有意吞掉：确认层开着时，除三个确认键外一律不放行。 */
   | 'swallow'
 
-/** 谁在前台。确认层 > 双页视图 > 最近文件面板 > 写作。 */
-export type Mode = 'writing' | 'recent' | 'diff' | 'confirm'
+/** 谁在前台。确认层 > 双页视图 > 最近文件面板 > 查找条 > 写作。 */
+export type Mode = 'writing' | 'recent' | 'diff' | 'find' | 'confirm'
 
 export interface Keystroke {
   key: string
@@ -52,6 +55,9 @@ export function intentOf(event: Keystroke, mode: Mode): Intent | null {
     if (event.key === 'Enter') return 'diff.restore'
   }
 
+  // 查找条开着时 Esc 只关它，不动文档；其余按键照常落到命令上。
+  if (mode === 'find' && event.key === 'Escape') return 'find.close'
+
   if (mode === 'recent') {
     if (event.key === 'Escape') return 'recent.close'
     if (event.key === 'ArrowUp') return 'recent.prev'
@@ -65,6 +71,8 @@ export function intentOf(event: Keystroke, mode: Mode): Intent | null {
   if (key === 'n') return 'new'
   if (key === 'o') return event.shiftKey ? 'open' : 'recent.toggle'
   if (key === 'h' && event.shiftKey) return 'diff.open'
+  if (key === '/') return 'source.toggle'
+  if (key === 'f') return 'find.open'
   // ⌘W 与 ⌘Q 都走关窗：无边框窗口没有系统菜单栏，这是唯一的键盘出口。
   if (key === 'w' || key === 'q') return 'window.close'
 

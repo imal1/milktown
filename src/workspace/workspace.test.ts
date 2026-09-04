@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 
-import type { DocumentEditor, DocumentSnapshot } from '../editor/editor'
+import type { DocumentEditor } from '../editor/editor'
 import { createFileService } from '../files/file-service'
 import { createMemoryFileSystem } from '../files/memory-ports'
 import { createHistory } from '../history/version-store'
@@ -17,12 +17,12 @@ import { createWorkspace } from './workspace'
 /** 假编辑器：文档内容就是一个字符串，改它等于用户敲了字。 */
 function fakeEditor() {
   let markdown = ''
-  let listener: ((snapshot: DocumentSnapshot) => void) | undefined
+  let listener: ((markdown: string) => void) | undefined
   let destroyed = 0
 
   const editor: DocumentEditor = {
     destroy: async () => void destroyed++,
-    read: () => ({ markdown, text: markdown }),
+    read: () => markdown,
     onChange: (fn) => {
       listener = fn
     },
@@ -36,7 +36,7 @@ function fakeEditor() {
     /** 模拟用户敲字：编辑器发出文档变更事件。 */
     type(next: string) {
       markdown = next
-      listener?.({ markdown: next, text: next })
+      listener?.(next)
     },
     setContent(next: string) {
       markdown = next
@@ -392,7 +392,7 @@ describe('工作区 · 双页视图与还原', () => {
     await t.workspace.selectVersion(t.workspace.versions.value.length - 1)
     await t.workspace.restoreVersion()
 
-    expect(t.current().editor.read().markdown).toBe('原样')
+    expect(t.current().editor.read()).toBe('原样')
     expect(t.workspace.dirty.value).toBe(true)
     expect(t.fs.files.get('/notes/a.md')).toBe('第二次改动')
     expect(t.workspace.diffOpen.value).toBe(false)
@@ -424,5 +424,112 @@ describe('工作区 · 字数', () => {
     t.current().type('今天写了三行字')
 
     expect(t.workspace.words.value).toBe(7)
+  })
+})
+
+describe('工作区 · 源码模式', () => {
+  it('⌘/ 把文档从编辑器交给文本区，编辑器实例被销毁', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('# 标题\n')
+    const editorCount = t.editors.length
+
+    await t.workspace.run('source.toggle')
+
+    expect(t.workspace.sourceMode.value).toBe(true)
+    expect(t.workspace.sourceText.value).toBe('# 标题\n')
+    expect(t.current().destroyed).toBe(1)
+    expect(t.editors.length).toBe(editorCount) // 没有第二个持有方
+  })
+
+  it('⌘/ 退出时文本区的内容装回新的编辑器实例', async () => {
+    const t = setup()
+    await t.start()
+    await t.workspace.run('source.toggle')
+    t.workspace.editSource('原文一行')
+
+    await t.workspace.run('source.toggle')
+
+    expect(t.workspace.sourceMode.value).toBe(false)
+    expect(t.current().editor.read()).toBe('原文一行')
+  })
+
+  it('纯粹的模式切换不置脏', async () => {
+    const t = setup({ seed: { '/a.md': '# 标题\n' } })
+    await t.start()
+    await t.workspace.openPath('/a.md')
+
+    await t.workspace.run('source.toggle')
+    expect(t.workspace.dirty.value).toBe(false)
+    await t.workspace.run('source.toggle')
+    expect(t.workspace.dirty.value).toBe(false)
+  })
+
+  it('文本区的输入置脏，与编辑器的文档变更事件同级', async () => {
+    const t = setup()
+    await t.start()
+    await t.workspace.run('source.toggle')
+
+    t.workspace.editSource('敲了字')
+
+    expect(t.workspace.dirty.value).toBe(true)
+  })
+
+  it('源码模式的 ⌘S 写出文本区里的原文，不经过规范化', async () => {
+    const t = setup({ seed: { '/a.md': '# 标题\n' } })
+    await t.start()
+    await t.workspace.openPath('/a.md')
+    await t.workspace.run('source.toggle')
+    // 假编辑器不做规范化；这里的原文是编辑器绝不会产出的写法。
+    t.workspace.editSource('#    标题   \n\n\n\n随手写的')
+
+    await t.workspace.run('save')
+
+    expect(t.fs.files.get('/a.md')).toBe('#    标题   \n\n\n\n随手写的')
+    expect(t.workspace.dirty.value).toBe(false)
+  })
+
+  it('字数在 ⌘/ 前后不跳变，数的都是原文字符数', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('  # 标题\n')
+    expect(t.workspace.words.value).toBe(4)
+
+    await t.workspace.run('source.toggle')
+
+    expect(t.workspace.words.value).toBe(4)
+  })
+
+  it('⌘F 在写作视图先切进源码模式，再开查找条', async () => {
+    const t = setup()
+    await t.start()
+
+    await t.workspace.run('find.open')
+
+    expect(t.workspace.sourceMode.value).toBe(true)
+    expect(t.workspace.findOpen.value).toBe(true)
+  })
+
+  it('⇧⌘H 在源码模式下先退回写作视图', async () => {
+    const t = setup({ seed: { '/a.md': '一' } })
+    await t.start()
+    await t.workspace.openPath('/a.md')
+    await t.workspace.run('save')
+    await t.workspace.run('source.toggle')
+
+    await t.workspace.run('diff.open')
+
+    expect(t.workspace.sourceMode.value).toBe(false)
+    expect(t.workspace.diffOpen.value).toBe(true)
+  })
+
+  it('退出源码模式时查找条一并关掉', async () => {
+    const t = setup()
+    await t.start()
+    await t.workspace.run('find.open')
+
+    await t.workspace.run('source.toggle')
+
+    expect(t.workspace.findOpen.value).toBe(false)
   })
 })

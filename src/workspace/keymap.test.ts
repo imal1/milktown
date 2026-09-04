@@ -68,3 +68,23 @@ describe('按键映射', () => {
     }
   })
 })
+
+describe('源码模式与查找条', () => {
+  it('⌘/ 切换源码模式，⌘F 开查找条', () => {
+    expect(intentOf(cmd('/'), 'writing')).toBe('source.toggle')
+    expect(intentOf(cmd('f'), 'writing')).toBe('find.open')
+  })
+
+  it('查找条开着时 Esc 只关查找条', () => {
+    expect(intentOf(plain('Escape'), 'find')).toBe('find.close')
+  })
+
+  it('查找条开着时普通输入照常放行给输入框', () => {
+    expect(intentOf(plain('a'), 'find')).toBeNull()
+    expect(intentOf(plain('Enter'), 'find')).toBeNull()
+  })
+
+  it('查找条开着时 ⌘/ 仍然切模式', () => {
+    expect(intentOf(cmd('/'), 'find')).toBe('source.toggle')
+  })
+})

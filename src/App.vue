@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import ConfirmLayer from './components/ConfirmLayer.vue'
 import DiffView from './components/DiffView.vue'
 import RecentPanel from './components/RecentPanel.vue'
+import SourceView from './components/SourceView.vue'
 import TitleBar from './components/TitleBar.vue'
 import { mountEditor } from './editor/editor'
 import { createFileService } from './files/file-service'
@@ -39,6 +40,7 @@ const mode = computed<Mode>(() => {
   if (confirm.question.value !== null) return 'confirm'
   if (workspace.diffOpen.value) return 'diff'
   if (workspace.recentOpen.value) return 'recent'
+  if (workspace.findOpen.value) return 'find'
   return 'writing'
 })
 
@@ -94,6 +96,7 @@ onBeforeUnmount(async () => {
       :dirty="workspace.dirty.value"
       :words="workspace.words.value"
       :recent-open="workspace.recentOpen.value"
+      :source-mode="workspace.sourceMode.value"
       @toggle-recent="workspace.toggleRecent()"
     />
 
@@ -116,7 +119,14 @@ onBeforeUnmount(async () => {
             </button>
           </div>
         </div>
-        <div ref="host" class="milktown-editor" />
+        <!-- 两个持有方只有一个在场，但编辑器的挂载点要一直留着（ADR 0009）。 -->
+        <div v-show="!workspace.sourceMode.value" ref="host" class="milktown-editor" />
+        <SourceView
+          v-if="workspace.sourceMode.value"
+          :text="workspace.sourceText.value"
+          :find-open="workspace.findOpen.value"
+          @edit="workspace.editSource($event)"
+        />
       </div>
     </div>
 

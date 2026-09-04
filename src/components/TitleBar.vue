@@ -4,6 +4,7 @@ defineProps<{
   dirty: boolean
   words: number
   recentOpen: boolean
+  sourceMode: boolean
 }>()
 
 const emit = defineEmits<{ toggleRecent: [] }>()
@@ -23,6 +24,8 @@ const emit = defineEmits<{ toggleRecent: [] }>()
         <span class="name">{{ fileName }}{{ dirty ? ' *' : '' }}</span>
         <span class="caret">▾</span>
       </button>
+      <!-- 第三处模式指示：标题栏、菜单里的勾、以及正文换了面孔。 -->
+      <span v-if="sourceMode" class="badge">原文</span>
     </div>
 
     <span class="words" data-tauri-drag-region>{{ words }}</span>
@@ -77,6 +80,16 @@ const emit = defineEmits<{ toggleRecent: [] }>()
 .caret {
   font-size: 9px;
   color: var(--muted);
+}
+
+.badge {
+  margin-left: 8px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--highlight);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
 }
 
 .words {

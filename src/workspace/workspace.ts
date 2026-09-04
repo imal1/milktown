@@ -1,7 +1,6 @@
 import { computed, ref, shallowRef } from 'vue'
 
 import type { DocumentEditor } from '../editor/editor'
-import { countWords } from '../editor/word-count'
 import { fileNameOf, type FileService } from '../files/file-service'
 import type { DiffLine } from '../history/line-diff'
 import { lineDiff } from '../history/line-diff'
@@ -32,6 +31,11 @@ export function createWorkspace(deps: WorkspaceDeps) {
   const editor = shallowRef<DocumentEditor | null>(null)
   const host = shallowRef<HTMLElement | null>(null)
 
+  /** 源码模式下文档的真相源是这块文本，编辑器实例此时不存在（ADR 0009）。 */
+  const sourceMode = ref(false)
+  const sourceText = ref('')
+  const findOpen = ref(false)
+
   const currentPath = ref<string | null>(null)
   const dirty = ref(false)
   const words = ref(0)
@@ -60,8 +64,22 @@ export function createWorkspace(deps: WorkspaceDeps) {
 
   const fileName = computed(() => (currentPath.value ? fileNameOf(currentPath.value) : '未命名'))
   const showEmptyState = computed(
-    () => currentPath.value === null && !dirty.value && words.value === 0
+    () => currentPath.value === null && !dirty.value && words.value === 0 && !sourceMode.value
   )
+
+  /** 文档只向当前持有真相源的那一方索取（ADR 0002 / 0009）。 */
+  function currentMarkdown(): string {
+    return sourceMode.value ? sourceText.value : (editor.value?.read() ?? '')
+  }
+
+  /**
+   * 字数口径：原文字符数，去掉首尾空白（ADR 0009）。两个模式数的是同一个
+   * 东西，⌘/ 前后不跳变。ADR 里的 300ms 节流是为了挡住「为了数字数而序列化
+   * 一次文档」，这里的 markdown 是编辑器变更事件顺手带来的，没有那笔开销。
+   */
+  function recount(markdown: string) {
+    words.value = markdown.trim().length
+  }
 
   function flash(text: string) {
     toast.value = text
@@ -73,8 +91,17 @@ export function createWorkspace(deps: WorkspaceDeps) {
     await deps.alert(error instanceof Error ? error.message : String(error))
   }
 
-  /** 用新内容重建编辑器实例——撤销历史随之清空（ADR 0002）。 */
+  /**
+   * 把内容装进当前持有真相源的那一方：写作视图重建编辑器实例（撤销历史
+   * 随之清空，ADR 0002），源码模式换掉文本区的内容。
+   */
   async function mountDocument(markdown: string) {
+    if (sourceMode.value) {
+      sourceText.value = markdown
+      recount(markdown)
+      return
+    }
+
     await editor.value?.destroy()
     editor.value = null
     const root = host.value
@@ -82,22 +109,57 @@ export function createWorkspace(deps: WorkspaceDeps) {
     root.innerHTML = ''
 
     const instance = await deps.mountEditor(root, markdown)
-    words.value = countWords(instance.read().text)
-    instance.onChange((snapshot) => {
+    recount(instance.read())
+    instance.onChange((next) => {
       dirty.value = true
-      words.value = countWords(snapshot.text)
+      recount(next)
     })
     editor.value = instance
+  }
+
+  /**
+   * ⌘/：真相源的一次交接，两方不同时存在（ADR 0009）。切换不是编辑，
+   * 因此不置脏——即使退出时的重新解析改变了文本。
+   */
+  async function toggleSourceMode() {
+    if (busy()) return
+    if (sourceMode.value) {
+      const text = sourceText.value
+      sourceMode.value = false
+      findOpen.value = false
+      await mountDocument(text)
+      return
+    }
+
+    const text = editor.value?.read() ?? ''
+    await editor.value?.destroy()
+    editor.value = null
+    if (host.value) host.value.innerHTML = ''
+    sourceText.value = text
+    recount(text)
+    sourceMode.value = true
+  }
+
+  /** 文本区的输入与编辑器的文档变更事件同级：都置脏（ADR 0009）。 */
+  function editSource(next: string) {
+    sourceText.value = next
+    dirty.value = true
+    recount(next)
+  }
+
+  /** ⌘F 在写作视图先切进源码模式——查找条是文本区的东西。 */
+  async function openFind() {
+    if (!sourceMode.value) await toggleSourceMode()
+    findOpen.value = true
   }
 
   /** 离开当前文件是天然边界，留一版——但只在这个文件已经有历史的时候。 */
   async function keepOnLeave() {
     const path = currentPath.value
-    const instance = editor.value
-    if (!path || !instance) return
+    if (!path) return
     try {
       if (!(await deps.history.exists(path))) return
-      await deps.history.keep(path, instance.read().markdown, { force: true })
+      await deps.history.keep(path, currentMarkdown(), { force: true })
     } catch (error) {
       await report(error)
     }
@@ -151,7 +213,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     // 基线只在内存里算：编辑器给出的规范化文本就是它（ADR 0006）。
     pendingOpenVersion = {
       path,
-      content: editor.value?.read().markdown ?? content,
+      content: currentMarkdown() || content,
       at: deps.now(),
     }
   }
@@ -176,12 +238,12 @@ export function createWorkspace(deps: WorkspaceDeps) {
   }
 
   async function save(asNew = false) {
-    const instance = editor.value
     // 另存为对话框还开着时再按 ⌘S，两条写入路径会同时在飞。
-    if (!instance || saving.value) return
+    if (saving.value || (!editor.value && !sourceMode.value)) return
     saving.value = true
     try {
-      const content = instance.read().markdown // 内容只向编辑器索取（ADR 0002）
+      // 源码模式写的是文本区里的原文，不经过规范化（ADR 0009）。
+      const content = currentMarkdown()
       let path = currentPath.value
 
       try {
@@ -231,9 +293,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
   }
 
   async function loadDiff(index: number) {
-    const instance = editor.value
     const version = versions.value[index]
-    if (!instance || !version) {
+    if (!version) {
       diff.value = []
       return
     }
@@ -242,7 +303,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
       const content = await deps.history.read(version)
       // 连按方向键时会有多个读取在飞。只有最后选中的那个版本的结果算数。
       if (versionIndex.value !== index) return
-      diff.value = lineDiff(content, instance.read().markdown)
+      diff.value = lineDiff(content, currentMarkdown())
     } catch (error) {
       diff.value = []
       await report(error)
@@ -252,6 +313,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
   }
 
   async function openDiffView() {
+    // 双页视图的差异本来就是源码级的，源码模式叠上去没有增量意义（ADR 0009）。
+    if (sourceMode.value) await toggleSourceMode()
     if (!currentPath.value) {
       await deps.alert('这个文档还没有保存过，没有版本可以对比。先按 ⌘S 保存一次。')
       return
@@ -356,6 +419,13 @@ export function createWorkspace(deps: WorkspaceDeps) {
       case 'diff.close':
         diffOpen.value = false
         return
+      case 'source.toggle':
+        return toggleSourceMode()
+      case 'find.open':
+        return openFind()
+      case 'find.close':
+        findOpen.value = false
+        return
       case 'window.close':
         return requestClose()
       default:
@@ -394,6 +464,9 @@ export function createWorkspace(deps: WorkspaceDeps) {
     versionIndex,
     diff,
     diffLoading,
+    sourceMode,
+    sourceText,
+    findOpen,
     // 动作
     start,
     destroy,
@@ -404,6 +477,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
     restoreVersion,
     requestClose,
     toggleRecent,
+    toggleSourceMode,
+    editSource,
   }
 }
 
