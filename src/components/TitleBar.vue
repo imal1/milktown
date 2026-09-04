@@ -6,9 +6,10 @@ defineProps<{
   recentOpen: boolean
 }>()
 
-const emit = defineEmits<{ toggleRecent: [] }>()
+const emit = defineEmits<{ toggleRecent: []; close: [] }>()
 
-async function windowAction(action: 'close' | 'minimize' | 'toggleMaximize') {
+// 关闭要先问脏文档，所以交给应用处理；另外两个直接调窗口。
+async function windowAction(action: 'minimize' | 'toggleMaximize') {
   const { getCurrentWindow } = await import('@tauri-apps/api/window')
   await getCurrentWindow()[action]()
 }
@@ -17,7 +18,7 @@ async function windowAction(action: 'close' | 'minimize' | 'toggleMaximize') {
 <template>
   <div class="titlebar" data-tauri-drag-region>
     <div class="lights">
-      <button class="light close" title="关闭" @click="windowAction('close')" />
+      <button class="light close" title="关闭" @click="emit('close')" />
       <button class="light min" title="最小化" @click="windowAction('minimize')" />
       <button class="light zoom" title="缩放" @click="windowAction('toggleMaximize')" />
     </div>

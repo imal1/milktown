@@ -1,0 +1,410 @@
+import { computed, ref, shallowRef } from 'vue'
+
+import type { DocumentEditor } from '../editor/editor'
+import { countWords } from '../editor/word-count'
+import { fileNameOf, type FileService } from '../files/file-service'
+import type { DiffLine } from '../history/line-diff'
+import { lineDiff } from '../history/line-diff'
+import type { History, Version } from '../history/version-store'
+import type { RecentFile, RecentFiles } from '../recent/recent-files'
+import type { Intent } from './keymap'
+
+/** 三选一确认的结果。系统对话框只有两个按钮，所以这个由应用自绘。 */
+export type ConfirmChoice = 'save' | 'discard' | 'cancel'
+
+export interface WorkspaceDeps {
+  files: FileService
+  history: History
+  recent: RecentFiles
+  pickFileToOpen: () => Promise<string | null>
+  alert: (message: string) => Promise<void>
+  confirm: (question: string) => Promise<ConfirmChoice>
+  mountEditor: (root: HTMLElement, markdown: string) => Promise<DocumentEditor>
+  closeWindow: () => Promise<void>
+  now: () => Date
+}
+
+/**
+ * 应用的全部状态与动作。`App.vue` 只负责把它接到模板和键盘事件上。
+ * 依赖全部注入，所以这里的每条流程都能在 node 环境里跑。
+ */
+export function createWorkspace(deps: WorkspaceDeps) {
+  const editor = shallowRef<DocumentEditor | null>(null)
+  const host = shallowRef<HTMLElement | null>(null)
+
+  const currentPath = ref<string | null>(null)
+  const dirty = ref(false)
+  const words = ref(0)
+  const toast = ref('')
+  const saving = ref(false)
+  const now = ref(deps.now().getTime())
+
+  const recentList = ref<RecentFile[]>([])
+  const recentOpen = ref(false)
+  const recentIndex = ref(0)
+
+  const diffOpen = ref(false)
+  const versions = ref<Version[]>([])
+  const versionIndex = ref(0)
+  const diff = ref<DiffLine[]>([])
+  const diffLoading = ref(false)
+
+  /**
+   * 打开时那一版还没落盘。打开文件不写用户的目录——只看一眼就关掉的文件
+   * 不该被建出 `.milktown/`。第一次保存时把它补写进去（ADR 0004）。
+   */
+  let pendingOpenVersion: { path: string; content: string; at: Date } | null = null
+  /** 还原之后的第一次保存必须留下新版本，让「曾经还原过」在历史中可见。 */
+  let forceNextKeep = false
+  let toastTimer: ReturnType<typeof setTimeout> | undefined
+
+  const fileName = computed(() => (currentPath.value ? fileNameOf(currentPath.value) : '未命名'))
+  const showEmptyState = computed(
+    () => currentPath.value === null && !dirty.value && words.value === 0
+  )
+
+  function flash(text: string) {
+    toast.value = text
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => (toast.value = ''), 1800)
+  }
+
+  async function report(error: unknown) {
+    await deps.alert(error instanceof Error ? error.message : String(error))
+  }
+
+  /** 用新内容重建编辑器实例——撤销历史随之清空（ADR 0002）。 */
+  async function mountDocument(markdown: string) {
+    await editor.value?.destroy()
+    editor.value = null
+    const root = host.value
+    if (!root) return
+    root.innerHTML = ''
+
+    const instance = await deps.mountEditor(root, markdown)
+    words.value = countWords(instance.read().text)
+    instance.onChange((snapshot) => {
+      dirty.value = true
+      words.value = countWords(snapshot.text)
+    })
+    editor.value = instance
+  }
+
+  /** 离开当前文件是天然边界，留一版——但只在这个文件已经有历史的时候。 */
+  async function keepOnLeave() {
+    const path = currentPath.value
+    const instance = editor.value
+    if (!path || !instance) return
+    try {
+      if (!(await deps.history.exists(path))) return
+      await deps.history.keep(path, instance.read().markdown, { force: true })
+    } catch (error) {
+      await report(error)
+    }
+  }
+
+  /**
+   * 有未保存修改时先问。返回 false 表示用户取消了整个动作。
+   * 选「保存」而保存本身失败或被取消时，同样返回 false——不能带着没落盘的
+   * 内容继续往下走。
+   */
+  async function settleDirty(what: string): Promise<boolean> {
+    if (!dirty.value) return true
+    const choice = await deps.confirm(`「${fileName.value}」有未保存的修改，${what}前要保存吗？`)
+    if (choice === 'cancel') return false
+    if (choice === 'discard') return true
+    await save()
+    return !dirty.value
+  }
+
+  /** 保存还在飞（另存为对话框开着）时，别的流程先让路——否则会跟它抢编辑器。 */
+  function busy() {
+    if (!saving.value) return false
+    flash('正在保存…')
+    return true
+  }
+
+  async function openPath(path: string) {
+    if (busy()) return
+    if (!(await settleDirty('打开另一个文件'))) return
+
+    let content: string
+    try {
+      content = (await deps.files.read(path)).content
+    } catch (error) {
+      recentList.value = deps.recent.forget(path)
+      await report(error)
+      return
+    }
+
+    await keepOnLeave()
+    // 先把编辑器换好再改状态：挂载失败时不能留下「路径指向新文件、
+    // 编辑器里还是旧文档」这种半截状态。
+    await mountDocument(content)
+    currentPath.value = path
+    dirty.value = false
+    recentOpen.value = false
+    diffOpen.value = false
+    now.value = deps.now().getTime()
+    recentList.value = deps.recent.remember(path, now.value)
+
+    // 基线只在内存里算：编辑器给出的规范化文本就是它（ADR 0006）。
+    pendingOpenVersion = {
+      path,
+      content: editor.value?.read().markdown ?? content,
+      at: deps.now(),
+    }
+  }
+
+  async function openWithDialog() {
+    recentOpen.value = false
+    const picked = await deps.pickFileToOpen()
+    if (picked) await openPath(picked)
+  }
+
+  async function newDocument() {
+    if (busy()) return
+    if (!(await settleDirty('新建文档'))) return
+    await keepOnLeave()
+    await mountDocument('')
+    currentPath.value = null
+    pendingOpenVersion = null
+    dirty.value = false
+    recentOpen.value = false
+    diffOpen.value = false
+    flash('新文档')
+  }
+
+  async function save(asNew = false) {
+    const instance = editor.value
+    // 另存为对话框还开着时再按 ⌘S，两条写入路径会同时在飞。
+    if (!instance || saving.value) return
+    saving.value = true
+    try {
+      const content = instance.read().markdown // 内容只向编辑器索取（ADR 0002）
+      let path = currentPath.value
+
+      try {
+        if (asNew || !path) {
+          const picked = await deps.files.saveAs(content, path ? fileNameOf(path) : '未命名.md')
+          if (!picked) return
+          path = picked
+          currentPath.value = picked
+          recentList.value = deps.recent.remember(picked, deps.now().getTime())
+        } else {
+          await deps.files.save(path, content)
+        }
+      } catch (error) {
+        await report(error) // 脏标记不清零：磁盘上还没有这份内容。
+        return
+      }
+
+      // ponytail: 不检测文件在打开之后是否被别的程序改过，直接覆盖。
+      // 要做的话得记 mtime、保存前比对、再设计冲突界面——那是独立一票。
+      dirty.value = false
+      flash(
+        `已保存 · ${deps.now().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+      )
+
+      try {
+        await keepVersions(path, content)
+      } catch (error) {
+        // 用户的文件已经落盘，脏标记是「文档 vs 文件」的差异，与历史无关。
+        await report(error)
+      }
+    } finally {
+      saving.value = false
+    }
+  }
+
+  /** 先补写「打开时那一版」，再留当前内容这一版。 */
+  async function keepVersions(path: string, content: string) {
+    const pending = pendingOpenVersion
+    pendingOpenVersion = null
+    if (pending && pending.path === path) {
+      await deps.history.keep(path, pending.content, { force: true, at: pending.at })
+      // 打开之后一个字没改就保存的话，两版内容一样，留一版就够。
+      if (pending.content === content) return
+    }
+    await deps.history.keep(path, content, { force: forceNextKeep || pending !== null })
+    forceNextKeep = false
+  }
+
+  async function loadDiff(index: number) {
+    const instance = editor.value
+    const version = versions.value[index]
+    if (!instance || !version) {
+      diff.value = []
+      return
+    }
+    diffLoading.value = true
+    try {
+      const content = await deps.history.read(version)
+      // 连按方向键时会有多个读取在飞。只有最后选中的那个版本的结果算数。
+      if (versionIndex.value !== index) return
+      diff.value = lineDiff(content, instance.read().markdown)
+    } catch (error) {
+      diff.value = []
+      await report(error)
+    } finally {
+      if (versionIndex.value === index) diffLoading.value = false
+    }
+  }
+
+  async function openDiffView() {
+    if (!currentPath.value) {
+      await deps.alert('这个文档还没有保存过，没有版本可以对比。先按 ⌘S 保存一次。')
+      return
+    }
+    versions.value = await deps.history.list(currentPath.value)
+    versionIndex.value = 0
+    recentOpen.value = false
+    diffOpen.value = true
+    await loadDiff(0)
+  }
+
+  async function selectVersion(index: number) {
+    versionIndex.value = index
+    await loadDiff(index)
+  }
+
+  /** 把选中版本装回编辑器：文档变脏，磁盘上的文件未被改写。 */
+  async function restoreVersion() {
+    const version = versions.value[versionIndex.value]
+    if (!version || busy()) return
+    if (!(await settleDirty('还原'))) return
+
+    try {
+      const content = await deps.history.read(version)
+      await mountDocument(content)
+      dirty.value = true
+      forceNextKeep = true
+      diffOpen.value = false
+      flash('已还原 · 未写入磁盘，⌘S 才落盘')
+    } catch (error) {
+      await report(error)
+    }
+  }
+
+  async function requestClose() {
+    if (busy()) return
+    try {
+      if (!(await settleDirty('关闭'))) return
+      await keepOnLeave()
+      await deps.closeWindow()
+    } catch (error) {
+      // 关窗回调那条路没有别的接手处，错误在这里就得说出来，
+      // 否则窗口既不关也不吭声。
+      await report(error)
+    }
+  }
+
+  function toggleRecent() {
+    recentOpen.value = !recentOpen.value
+    recentIndex.value = 0
+    now.value = deps.now().getTime()
+  }
+
+  function moveRecent(delta: number) {
+    const last = recentList.value.length - 1
+    recentIndex.value = Math.min(Math.max(recentIndex.value + delta, 0), Math.max(last, 0))
+  }
+
+  async function openSelectedRecent() {
+    const file = recentList.value[recentIndex.value]
+    if (file) await openPath(file.path)
+  }
+
+  /** 意图的总入口。挂载失败一类的意外在这里兜住，不会变成无人接手的 rejection。 */
+  async function run(intent: Intent) {
+    try {
+      await dispatch(intent)
+    } catch (error) {
+      await report(error)
+    }
+  }
+
+  async function dispatch(intent: Intent) {
+    switch (intent) {
+      case 'save':
+        return save()
+      case 'saveAs':
+        return save(true)
+      case 'new':
+        return newDocument()
+      case 'open':
+        return openWithDialog()
+      case 'recent.toggle':
+        return toggleRecent()
+      case 'recent.prev':
+        return moveRecent(-1)
+      case 'recent.next':
+        return moveRecent(1)
+      case 'recent.open':
+        return openSelectedRecent()
+      case 'recent.close':
+        recentOpen.value = false
+        return
+      case 'diff.open':
+        return openDiffView()
+      case 'diff.prev':
+        return selectVersion(Math.max(versionIndex.value - 1, 0))
+      case 'diff.next':
+        return selectVersion(Math.min(versionIndex.value + 1, versions.value.length - 1))
+      case 'diff.restore':
+        return restoreVersion()
+      case 'diff.close':
+        diffOpen.value = false
+        return
+      case 'window.close':
+        return requestClose()
+      default:
+        return
+    }
+  }
+
+  async function start(root: HTMLElement) {
+    host.value = root
+    recentList.value = deps.recent.list()
+    await mountDocument('')
+    dirty.value = false
+  }
+
+  async function destroy() {
+    clearTimeout(toastTimer)
+    await editor.value?.destroy()
+    editor.value = null
+  }
+
+  return {
+    // 状态
+    currentPath,
+    fileName,
+    dirty,
+    words,
+    toast,
+    saving,
+    now,
+    showEmptyState,
+    recentList,
+    recentOpen,
+    recentIndex,
+    diffOpen,
+    versions,
+    versionIndex,
+    diff,
+    diffLoading,
+    // 动作
+    start,
+    destroy,
+    run,
+    openPath,
+    save,
+    selectVersion,
+    restoreVersion,
+    requestClose,
+    toggleRecent,
+  }
+}
+
+export type Workspace = ReturnType<typeof createWorkspace>

@@ -43,7 +43,6 @@ export function createScriptedDialog(script: Partial<DialogPort> = {}): DialogPo
   return {
     pickFileToOpen: async () => null,
     pickFileToSave: async () => null,
-    confirm: async () => true,
     alert: async () => {},
     ...script,
   }

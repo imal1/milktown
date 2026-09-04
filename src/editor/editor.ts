@@ -1,24 +1,34 @@
 import { Crepe } from '@milkdown/crepe'
-import { editorViewOptionsCtx } from '@milkdown/kit/core'
-import { remarkStringifyOptionsCtx } from '@milkdown/kit/core'
+import {
+  editorViewCtx,
+  editorViewOptionsCtx,
+  remarkStringifyOptionsCtx,
+} from '@milkdown/kit/core'
 
 import { markdownStyle } from './markdown-style'
 
+export interface DocumentSnapshot {
+  /** 规范化后的 Markdown 源码——保存写的就是它。 */
+  markdown: string
+  /** 渲染后的正文纯文本。字数数的是它，不是源码。 */
+  text: string
+}
+
 /**
- * 编辑器封装。对外只有四件事：挂载、销毁、取出当前 Markdown、订阅文档变更。
+ * 编辑器封装。对外只有四件事：挂载、销毁、取出当前文档、订阅文档变更。
  * Crepe 实例不外泄（ADR 0002：编辑器是文档的唯一真相源）。
  */
 export interface DocumentEditor {
   destroy: () => Promise<void>
-  getMarkdown: () => string
-  onChange: (fn: (markdown: string) => void) => void
+  read: () => DocumentSnapshot
+  onChange: (fn: (snapshot: DocumentSnapshot) => void) => void
 }
 
 export async function mountEditor(
   root: HTMLElement,
   markdown: string
 ): Promise<DocumentEditor> {
-  const listeners: ((markdown: string) => void)[] = []
+  const listeners: ((snapshot: DocumentSnapshot) => void)[] = []
 
   const crepe = new Crepe({
     root,
@@ -48,9 +58,19 @@ export async function mountEditor(
     }))
   })
 
+  const plainText = () => {
+    let text = ''
+    crepe.editor.action((ctx) => {
+      const doc = ctx.get(editorViewCtx).state.doc
+      text = doc.textBetween(0, doc.content.size, '\n', ' ')
+    })
+    return text
+  }
+
   crepe.on((listener) => {
-    listener.markdownUpdated((_ctx, markdown) => {
-      for (const fn of listeners) fn(markdown)
+    listener.markdownUpdated((_ctx, updated) => {
+      const snapshot = { markdown: updated, text: plainText() }
+      for (const fn of listeners) fn(snapshot)
     })
   })
 
@@ -60,7 +80,7 @@ export async function mountEditor(
     destroy: async () => {
       await crepe.destroy()
     },
-    getMarkdown: () => crepe.getMarkdown(),
+    read: () => ({ markdown: crepe.getMarkdown(), text: plainText() }),
     onChange: (fn) => {
       listeners.push(fn)
     },

@@ -14,8 +14,6 @@ export interface DialogPort {
   pickFileToOpen: () => Promise<string | null>
   /** 系统原生保存对话框，取消时返回 null。 */
   pickFileToSave: (defaultName: string) => Promise<string | null>
-  /** 是 / 否确认框。 */
-  confirm: (message: string) => Promise<boolean>
   /** 出错时的提示框。 */
   alert: (message: string) => Promise<void>
 }

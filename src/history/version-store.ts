@@ -9,6 +9,8 @@ export interface Version {
 }
 
 export interface History {
+  /** 这个文件是否已经有历史。用来判断能不能在不打扰用户目录的前提下留存。 */
+  exists: (filePath: string) => Promise<boolean>
   /** 一个文件的全部版本，按时间倒序。 */
   list: (filePath: string) => Promise<Version[]>
   /** 读出某个版本的完整内容。 */
@@ -16,8 +18,13 @@ export interface History {
   /**
    * 留存一版。距上一版不足 5 分钟就覆盖它，不新增。
    * `force: true` 用于打开与关闭这两个天然边界，不受窗口约束。
+   * `at` 指定留存时刻——补写「打开时那一版」时用它，而不是当前时间。
    */
-  keep: (filePath: string, content: string, options?: { force?: boolean }) => Promise<Version>
+  keep: (
+    filePath: string,
+    content: string,
+    options?: { force?: boolean; at?: Date }
+  ) => Promise<Version>
 }
 
 /** 版本存在文件旁边的隐藏目录里（ADR 0005）。 */
@@ -65,18 +72,26 @@ export function createHistory(fs: FileSystemPort, clock: ClockPort): History {
   return {
     list,
 
+    exists: (filePath) => fs.exists(versionsDirOf(filePath)),
+
     read: (version) => fs.readTextFile(version.path),
 
     keep: async (filePath, content, options) => {
       const dir = versionsDirOf(filePath)
-      const now = clock.now()
+      const now = options?.at ?? clock.now()
       const previous = (await list(filePath))[0]
 
       await fs.mkdir(dir)
-      const version: Version = { savedAt: now, path: `${dir}/${versionFileName(now)}` }
+      // 同一毫秒里留两版（补写「打开时那一版」紧接着留当前内容）会撞名，
+      // 后写的会盖掉先写的。撞上就往后挪一毫秒。
+      let savedAt = now
+      while (await fs.exists(`${dir}/${versionFileName(savedAt)}`)) {
+        savedAt = new Date(savedAt.getTime() + 1)
+      }
+      const version: Version = { savedAt, path: `${dir}/${versionFileName(savedAt)}` }
       await fs.writeTextFile(version.path, content)
 
-      const sincePrevious = previous ? now.getTime() - previous.savedAt.getTime() : Infinity
+      const sincePrevious = previous ? savedAt.getTime() - previous.savedAt.getTime() : Infinity
       // 负数意味着上一版的时刻在未来（系统时钟被调过）。那一版更新，不能删。
       const withinWindow = sincePrevious >= 0 && sincePrevious < MERGE_WINDOW_MS
       if (previous && withinWindow && !options?.force && previous.path !== version.path) {

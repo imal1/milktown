@@ -91,6 +91,38 @@ describe('版本存储', () => {
     expect(await Promise.all(versions.map(history.read))).toEqual(['三', '二', '一'])
   })
 
+  it('同一毫秒留两版不会互相覆盖', async () => {
+    const { history } = setup()
+    const at = new Date('2026-09-04T10:00:00.000Z')
+
+    await history.keep('/notes/a.md', '打开时的样子', { force: true, at })
+    await history.keep('/notes/a.md', '改过之后', { force: true, at })
+
+    const versions = await history.list('/notes/a.md')
+    expect(await Promise.all(versions.map(history.read))).toEqual([
+      '改过之后',
+      '打开时的样子',
+    ])
+  })
+
+  it('指定 at 时留存时刻用它而不是当前时间', async () => {
+    const { history } = setup()
+    const at = new Date('2026-09-04T08:30:00.000Z')
+
+    const version = await history.keep('/notes/a.md', '正文', { at })
+
+    expect(version.savedAt.toISOString()).toBe('2026-09-04T08:30:00.000Z')
+  })
+
+  it('exists 反映这个文件有没有历史', async () => {
+    const { history } = setup()
+    expect(await history.exists('/notes/a.md')).toBe(false)
+
+    await history.keep('/notes/a.md', '正文')
+
+    expect(await history.exists('/notes/a.md')).toBe(true)
+  })
+
   it('历史目录不存在时返回空而不是报错', async () => {
     const { history } = setup()
     expect(await history.list('/notes/从未保存.md')).toEqual([])

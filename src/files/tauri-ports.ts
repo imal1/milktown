@@ -1,4 +1,4 @@
-import { ask, message, open, save } from '@tauri-apps/plugin-dialog'
+import { message, open, save } from '@tauri-apps/plugin-dialog'
 import {
   exists,
   mkdir,
@@ -35,7 +35,6 @@ export const tauriDialog: DialogPort = {
     })
     return picked ?? null
   },
-  confirm: (text) => ask(text, { title: 'milktown', kind: 'warning' }),
   alert: async (text) => {
     await message(text, { title: 'milktown', kind: 'error' })
   },
