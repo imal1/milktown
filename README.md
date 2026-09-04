@@ -23,17 +23,17 @@
 
 ### 前提条件
 
-- [Node.js](https://nodejs.org/) 20+
+- [Bun](https://bun.sh/)
 - [Rust](https://www.rust-lang.org/) 最新稳定版
 
 ### 常用命令
 
 ```bash
-npm install          # 安装依赖
-npm run tauri dev    # 开发模式（起 Vite + Tauri 窗口）
-npm run test         # 跑测试
-npm run typecheck    # 类型检查（tsc --noEmit，只覆盖 .ts）
-npm run tauri build  # 打包
+bun install          # 安装依赖
+bun run tauri dev    # 开发模式（起 Vite + Tauri 窗口）
+bun run test         # 跑测试
+bun run typecheck    # 类型检查（tsc --noEmit，只覆盖 .ts）
+bun run tauri build  # 打包
 ```
 
 ## 项目结构
