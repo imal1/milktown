@@ -41,9 +41,9 @@ const emit = defineEmits<{ toggleRecent: [] }>()
   user-select: none;
 }
 
-/* 系统交通灯就画在这块位置上，给它让出来。 */
+/* 系统交通灯就画在这块位置上（三个灯占到 x≈68），给它让出来。 */
 .lights-space {
-  width: 56px;
+  width: 72px;
   flex: none;
 }
 
