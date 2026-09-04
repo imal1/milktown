@@ -35,5 +35,7 @@ export default defineConfig({
     // opt in with a `@vitest-environment jsdom` docblock.
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // jsdom 缺的浏览器 API 在这里补齐；node 环境的测试用不到它们。
+    setupFiles: ['./src/test-setup.ts'],
   },
 })

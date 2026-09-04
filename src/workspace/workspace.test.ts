@@ -28,6 +28,12 @@ function fakeEditor() {
     onChange: (fn) => {
       listener = fn
     },
+    // 假编辑器不跑输入规则：这里只关心「敲了字」这件事本身。
+    type: (text) => {
+      markdown += text
+      listener?.(markdown)
+    },
+    press: () => {},
   }
 
   return {

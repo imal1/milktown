@@ -339,3 +339,34 @@ pub fn run() {
             _ => {}
         });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::args_of;
+    use std::path::Path;
+
+    fn of(args: &[&str], cwd: &str) -> Vec<String> {
+        args_of(args.iter().map(|a| a.to_string()), Path::new(cwd))
+    }
+
+    #[test]
+    fn absolute_paths_pass_through() {
+        assert_eq!(of(&["/a/b.md"], "/work"), vec!["/a/b.md"]);
+    }
+
+    #[test]
+    fn relative_paths_expand_against_the_launch_directory() {
+        assert_eq!(of(&["notes.md"], "/work"), vec!["/work/notes.md"]);
+        assert_eq!(of(&["../notes.md"], "/work/deep"), vec!["/work/deep/../notes.md"]);
+    }
+
+    #[test]
+    fn flags_are_not_paths() {
+        assert_eq!(of(&["-n", "--verbose", "a.md"], "/work"), vec!["/work/a.md"]);
+    }
+
+    #[test]
+    fn no_arguments_yields_no_paths() {
+        assert!(of(&[], "/work").is_empty());
+    }
+}
