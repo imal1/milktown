@@ -13,6 +13,6 @@ it('挂载已有内容不应触发文档变更事件', async () => {
   ed.onChange(() => fired++)
   await new Promise(r => setTimeout(r, 200))
   expect(fired).toBe(0)
-  expect(ed.read().markdown).toContain('# 标题')
+  expect(ed.read()).toContain('# 标题')
   await ed.destroy()
 }, 30000)

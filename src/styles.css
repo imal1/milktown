@@ -9,6 +9,10 @@
   --rule: #eeeae0;
   --rule-soft: #f2eee4;
   --highlight: #f0ece2;
+  --highlight-active: #d8e0d0;
+  --source-size: 15px;
+  --source-leading: 1.8;
+  --scrim-drop: rgba(253, 252, 249, 0.88);
   --serif: 'Source Serif 4', 'Songti SC', serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --titlebar-height: 34px;
