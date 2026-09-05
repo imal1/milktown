@@ -21,6 +21,7 @@ function fakeEditor() {
   let markdown = ''
   let listener: ((markdown: string) => void) | undefined
   let destroyed = 0
+  const formatted: string[] = []
 
   const editor: DocumentEditor = {
     destroy: async () => void destroyed++,
@@ -34,10 +35,13 @@ function fakeEditor() {
       listener?.(markdown)
     },
     press: () => {},
+    // 假编辑器不排版，只记下收到了哪条命令——真的排版在编辑器层验。
+    format: (command) => void formatted.push(command),
   }
 
   return {
     editor,
+    formatted,
     get destroyed() {
       return destroyed
     },

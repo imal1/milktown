@@ -2,7 +2,14 @@
  * 按键 → 意图。纯函数，不碰 DOM 也不碰状态，所以「⌘S 触发保存」这条
  * 可以在 node 环境里断言。全局快捷键只在这里定义一次。
  */
+import type { FormatCommand } from '../editor/format'
+
+/**
+ * 排版命令也是意图，但它们只从原生菜单来（写作面上没有工具栏，ADR 0013），
+ * 快捷键由菜单的 accelerator 提供，所以 `intentOf` 里没有它们的分支。
+ */
 export type Intent =
+  | FormatCommand
   | 'save'
   | 'saveAs'
   | 'new'

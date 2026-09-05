@@ -8,6 +8,7 @@ import type { History, Version } from '../history/version-store'
 import type { RecentFile, RecentFiles } from '../recent/recent-files'
 import type { WindowsPort } from '../windows/windows'
 import type { Draft, Drafts } from './drafts'
+import { isFormatCommand } from '../editor/format'
 import type { Intent } from './keymap'
 
 /** 三选一确认的结果。系统对话框只有两个按钮，所以这个由应用自绘。 */
@@ -414,6 +415,13 @@ export function createWorkspace(deps: WorkspaceDeps) {
   }
 
   async function dispatch(intent: Intent) {
+    // 排版命令落在编辑器身上。源码模式里真相源是那块文本，不是编辑器
+    // （ADR 0009），所以那时候排版没有对象——不做，也不报错。
+    if (isFormatCommand(intent)) {
+      editor.value?.format(intent)
+      return
+    }
+
     switch (intent) {
       case 'save':
         return save()

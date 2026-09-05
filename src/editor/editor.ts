@@ -5,10 +5,56 @@ import {
   remarkStringifyOptionsCtx,
   serializerCtx,
 } from '@milkdown/kit/core'
+import type { Ctx } from '@milkdown/kit/ctx'
+import {
+  createCodeBlockCommand,
+  insertHrCommand,
+  toggleEmphasisCommand,
+  toggleInlineCodeCommand,
+  toggleLinkCommand,
+  toggleStrongCommand,
+  turnIntoTextCommand,
+  wrapInBlockquoteCommand,
+  wrapInBulletListCommand,
+  wrapInHeadingCommand,
+  wrapInOrderedListCommand,
+} from '@milkdown/kit/preset/commonmark'
+import { insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm'
 import { Fragment, type Node } from '@milkdown/kit/prose/model'
 import type { EditorView } from '@milkdown/kit/prose/view'
+import { callCommand } from '@milkdown/kit/utils'
 
+import type { FormatCommand } from './format'
 import { markdownStyle } from './markdown-style'
+
+/**
+ * 排版命令的名字到 ProseMirror 命令的对照表。Milkdown 只在这个文件里出现
+ * （ADR 0002），所以这张表也只能在这里。
+ *
+ * 每一项是个 thunk，不是现成的调用：`$Command.key` 要等插件在编辑器里跑起来
+ * 才被赋值，模块加载时读到的是 undefined。
+ */
+const commands: Record<FormatCommand, () => (ctx: Ctx) => boolean> = {
+  'format.strong': () => callCommand(toggleStrongCommand.key),
+  'format.emphasis': () => callCommand(toggleEmphasisCommand.key),
+  'format.code': () => callCommand(toggleInlineCodeCommand.key),
+  'format.strikethrough': () => callCommand(toggleStrikethroughCommand.key),
+  // 空 href：链接先建出来，地址在链接气泡里填。
+  'format.link': () => callCommand(toggleLinkCommand.key, { href: '' }),
+  'block.text': () => callCommand(turnIntoTextCommand.key),
+  'block.h1': () => callCommand(wrapInHeadingCommand.key, 1),
+  'block.h2': () => callCommand(wrapInHeadingCommand.key, 2),
+  'block.h3': () => callCommand(wrapInHeadingCommand.key, 3),
+  'block.h4': () => callCommand(wrapInHeadingCommand.key, 4),
+  'block.h5': () => callCommand(wrapInHeadingCommand.key, 5),
+  'block.h6': () => callCommand(wrapInHeadingCommand.key, 6),
+  'block.quote': () => callCommand(wrapInBlockquoteCommand.key),
+  'block.bullet': () => callCommand(wrapInBulletListCommand.key),
+  'block.ordered': () => callCommand(wrapInOrderedListCommand.key),
+  'block.code': () => callCommand(createCodeBlockCommand.key),
+  'block.table': () => callCommand(insertTableCommand.key),
+  'block.rule': () => callCommand(insertHrCommand.key),
+}
 
 /** 按键的修饰键。名字对齐 `KeyboardEvent`。 */
 export interface Modifiers {
@@ -31,6 +77,8 @@ export interface DocumentEditor {
   type: (text: string) => void
   /** 像用户那样按一个键：走 keymap，所以 Enter 会分段、⌘Z 会撤销。 */
   press: (key: string, modifiers?: Modifiers) => void
+  /** 走一条排版命令。写作面上没有工具栏，这是「格式」「段落」两栏菜单的落点。 */
+  format: (command: FormatCommand) => void
 }
 
 export async function mountEditor(
@@ -43,8 +91,10 @@ export async function mountEditor(
     root,
     defaultValue: markdown,
     features: {
-      [Crepe.Feature.BlockEdit]: true,
-      [Crepe.Feature.Toolbar]: true,
+      // 这两个是 Crepe 自带的浮动工具栏——选中文字的格式条，和行首的
+      // 拖拽手柄加斜杠菜单。写作面上不要工具栏（ADR 0013），排版走菜单。
+      [Crepe.Feature.BlockEdit]: false,
+      [Crepe.Feature.Toolbar]: false,
       [Crepe.Feature.CodeMirror]: true,
       [Crepe.Feature.Table]: true,
       [Crepe.Feature.ImageBlock]: true,
@@ -136,5 +186,8 @@ export async function mountEditor(
         const event = new KeyboardEvent('keydown', { key, code: key, keyCode, ...modifiers })
         view.someProp('handleKeyDown', (fn) => fn(view, event))
       }),
+    format: (command) => {
+      crepe.editor.action(commands[command]())
+    },
   }
 }
