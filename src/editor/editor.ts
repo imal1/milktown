@@ -23,10 +23,12 @@ import { insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/pr
 import { DOMSerializer, Fragment, type Node } from '@milkdown/kit/prose/model'
 import { TextSelection } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
+import { $prose } from '@milkdown/kit/utils'
 import { callCommand } from '@milkdown/kit/utils'
 
 import type { FormatCommand } from './format'
 import { markdownStyle } from './markdown-style'
+import { createSourceMarks, refreshSourceMarks } from './source-marks'
 
 /**
  * 排版命令的名字到 ProseMirror 命令的对照表。Milkdown 只在这个文件里出现
@@ -110,13 +112,20 @@ export async function mountEditor(
   const listeners: ((markdown: string) => void)[] = []
   const composeListeners: ((composing: boolean) => void)[] = []
 
+  const sourceMarks = createSourceMarks()
+
   function announceComposing(composing: boolean) {
+    sourceMarks.setComposing(composing)
     for (const fn of composeListeners) fn(composing)
   }
   // 挂在挂载点上而不是 ProseMirror 的 DOM 上：后者在 `crepe.create()` 之后
   // 才存在，而且重建视图时会被换掉。
   root.addEventListener('compositionstart', () => announceComposing(true))
-  root.addEventListener('compositionend', () => announceComposing(false))
+  root.addEventListener('compositionend', () => {
+    announceComposing(false)
+    // 合成被取消时后面没有事务，标记会停在合成开始那一刻。推一下让它接回来。
+    withView(refreshSourceMarks)
+  })
 
   const crepe = new Crepe({
     root,
@@ -139,6 +148,10 @@ export async function mountEditor(
       [Crepe.Feature.Placeholder]: { text: '开始写' },
     },
   })
+
+  // 光标所在段的 Markdown 标记（ADR 0014）。Crepe 没有这个开关，是自己写的
+  // ProseMirror 插件——`$prose` 是把一个裸插件塞进 Milkdown 的口子。
+  crepe.editor.use($prose(() => sourceMarks.plugin))
 
   crepe.editor.config((ctx) => {
     ctx.set(remarkStringifyOptionsCtx, { ...markdownStyle })

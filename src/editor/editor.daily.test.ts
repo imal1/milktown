@@ -233,3 +233,108 @@ describe('光标所在的块', () => {
     expect(editor.blockIndex()).toBe(0)
   })
 })
+
+/**
+ * 光标所在段的 Markdown 标记（ADR 0014）。标记是画上去的 widget decoration，
+ * 所以这一组的每一条都同时验两件事：纸面上看得见，`read()` 里没有。
+ */
+describe('光标所在段显出 Markdown 标记', () => {
+  /** 纸面上这一刻显出来的标记，按出现顺序。 */
+  const marks = () => [...host.querySelectorAll('.milktown-mark')].map((el) => el.textContent)
+
+  it('光标进到哪一段，哪一段显标记；移出去就收回', () => {
+    write('## 标题\n正文 **粗** 收尾')
+
+    expect(marks()).toEqual(['**', '**'])
+
+    editor.focusBlock(0)
+    expect(marks()).toEqual(['##'])
+  })
+
+  it('显出来的标记不进保存出去的文本', () => {
+    write('## 标题\n正文 **粗**')
+    const before = editor.read()
+
+    editor.focusBlock(0)
+    expect(marks()).toEqual(['##'])
+    expect(editor.read()).toBe(before)
+    expect(editor.read()).toBe('## 标题\n\n正文 **粗**\n')
+  })
+
+  it('标记不是文档内容——所以进不了剪贴板，也算不进字数', () => {
+    write('**粗**')
+
+    // 三条都是同一件事的三个出口：文档里没有这两个字符，任何从文档出发的东西
+    // 都看不见它们。剪贴板走的也是这条路。
+    expect(marks()).toEqual(['**', '**'])
+    expect(editor.read()).toBe('**粗**\n')
+    expect(editor.blocks()[0]?.markdown).toBe('**粗**')
+    // 光标也落不进去——它不是可编辑的内容。
+    const widget = host.querySelector('.milktown-mark')
+    expect(widget?.getAttribute('contenteditable')).toBe('false')
+  })
+
+  it('行首那几个：标题、引用、无序、有序', () => {
+    write('# 一级')
+    expect(marks()).toEqual(['#'])
+
+    write('\n> 引用')
+    expect(marks()).toEqual(['>'])
+
+    write('\n\n- 项')
+    expect(marks()).toEqual(['-'])
+
+    write('\n\n1. 一')
+    expect(marks()).toEqual(['1.'])
+  })
+
+  it('嵌套的行首标记按原文的顺序拼起来', () => {
+    write('> - 项')
+
+    expect(marks()).toEqual(['> -'])
+  })
+
+  it('行内那几个：粗、斜、码、删除线、链接、公式', () => {
+    write('~~删~~ 和 `码`')
+    expect(marks()).toEqual(['~~', '~~', '`', '`'])
+
+    write('\n\n*斜*')
+    expect(marks()).toEqual(['*', '*'])
+
+    write('\n\n前 $x^2$ 后')
+    expect(marks()).toEqual(['$', '$'])
+  })
+
+  it('链接的右半边带着地址', () => {
+    write('字')
+    editor.press('a', MOD)
+    editor.format('format.link')
+    // ⌘A 选的是整篇，没有「当前那一段」；把光标收回段里标记才该出现。
+    expect(marks()).toEqual([])
+
+    editor.focusBlock(0)
+    expect(marks()).toEqual(['[', ']()'])
+  })
+
+  it('代码围栏与表格里不显——标记比内容还长，纸面会散架', () => {
+    write('甲')
+    editor.format('block.code')
+    expect(marks()).toEqual([])
+
+    editor.format('block.table')
+    expect(marks()).toEqual([])
+  })
+
+  it('输入法合成期间标记不动，合成结束才跟上', () => {
+    write('甲\n## 乙')
+    expect(marks()).toEqual(['##'])
+
+    host.dispatchEvent(new CompositionEvent('compositionstart'))
+    // 候选框还开着的时候纸面不许动：光标换段了，标记也不许跟着换。
+    editor.focusBlock(0)
+    expect(marks()).toEqual(['##'])
+
+    host.dispatchEvent(new CompositionEvent('compositionend'))
+    expect(marks()).toEqual([])
+  })
+})

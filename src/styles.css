@@ -76,6 +76,31 @@ button {
   margin: 0 0 0.7em;
 }
 
+/*
+ * 光标所在段的 Markdown 标记（ADR 0014）。等宽、0.86em、#6E675C——比正文轻，
+ * 但认得出是字符不是装饰。
+ *
+ * 行首那些悬挂在纸外：绝对定位到文本起点，再整体左移自己的宽度。段落因此
+ * 要是定位上下文，否则会挂到最外面那层去。
+ */
+.milktown-mark {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  color: var(--ink-faint);
+  white-space: pre;
+}
+
+.milktown-editor .ProseMirror :is(p, h1, h2, h3, h4, h5, h6, li) {
+  position: relative;
+}
+
+.milktown-mark-lead {
+  position: absolute;
+  transform: translateX(-100%);
+  padding-right: 0.5em;
+  pointer-events: none;
+}
+
 .milktown-editor .ProseMirror blockquote {
   margin: 0 0 0.85em;
   padding-left: 20px;
