@@ -22,7 +22,9 @@ function fakeEditor() {
   let listener: ((markdown: string) => void) | undefined
   let composeListener: ((composing: boolean) => void) | undefined
   let destroyed = 0
+  let block = 0
   const formatted: string[] = []
+  const focused: number[] = []
 
   const editor: DocumentEditor = {
     destroy: async () => void destroyed++,
@@ -41,11 +43,27 @@ function fakeEditor() {
     onComposition: (fn) => {
       composeListener = fn
     },
+    // 假编辑器不排版：块就是空行分段，HTML 是原文本身。真的排版在编辑器层验。
+    blocks: () =>
+      markdown
+        .split(/\n{2,}/)
+        .filter((part) => part.trim() !== '')
+        .map((part) => ({ html: part, markdown: part })),
+    blockIndex: () => block,
+    focusBlock: (index) => {
+      block = index
+      focused.push(index)
+    },
   }
 
   return {
     editor,
     formatted,
+    focused,
+    /** 模拟用户把光标放到第几段。 */
+    putCursor(index: number) {
+      block = index
+    },
     get destroyed() {
       return destroyed
     },
@@ -729,5 +747,95 @@ describe('工作区 · 多窗口', () => {
     await t.workspace.run('new')
 
     expect(t.claimed).toEqual(['/notes/a.md', null])
+  })
+})
+
+describe('工作区 · 对照视图', () => {
+  it('没有当前文件时磁盘对照进不去，也不静默——菜单项据此置灰', async () => {
+    const t = setup()
+    await t.start()
+
+    expect(t.workspace.canCompareDisk.value).toBe(false)
+    await t.workspace.run('compare.disk')
+
+    expect(t.workspace.compareOpen.value).toBe(false)
+    expect(t.alert).toHaveBeenCalledOnce()
+  })
+
+  it('有文件但一个字没改，照样进得去，计数条说「没有改动」', async () => {
+    const t = setup({ seed: { '/notes/a.md': '一样的内容' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+
+    await t.workspace.run('compare.disk')
+
+    expect(t.workspace.canCompareDisk.value).toBe(true)
+    expect(t.workspace.compareOpen.value).toBe(true)
+    expect(t.workspace.compareNote.value).toBe('没有改动')
+  })
+
+  it('改了字不保存：左栏是磁盘上那份，右栏是当前这份', async () => {
+    const t = setup({ seed: { '/notes/a.md': '磁盘上的' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+    t.current().type('改过的')
+
+    await t.workspace.run('compare.disk')
+
+    const rows = t.workspace.compareRows.value
+    expect(rows.map((row) => row.left.text)).toContain('磁盘上的')
+    expect(rows.map((row) => row.right.text)).toContain('改过的')
+    expect(t.workspace.compareNote.value).toBe('1 行新增 · 1 行删除')
+  })
+
+  it('原文对照一行一个块，右栏是那个块的原文', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('# 标题\n\n正文')
+
+    await t.workspace.run('compare.plain')
+
+    expect(t.workspace.compareKind.value).toBe('plain')
+    expect(t.workspace.compareRows.value.map((row) => row.right.text)).toEqual(['# 标题', '正文'])
+    expect(t.workspace.compareNote.value).toBe('2 段')
+  })
+
+  it('人在源码模式里按下它，先把真相源交回编辑器再进——退出后停在写作视图', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('正文')
+    await t.workspace.run('source.toggle')
+    expect(t.workspace.sourceMode.value).toBe(true)
+
+    await t.workspace.run('compare.plain')
+    expect(t.workspace.sourceMode.value).toBe(false)
+    expect(t.workspace.compareOpen.value).toBe(true)
+
+    await t.workspace.run('compare.close')
+    expect(t.workspace.compareOpen.value).toBe(false)
+    expect(t.workspace.sourceMode.value).toBe(false)
+  })
+
+  it('退出时光标落回进来时那一段', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('甲\n\n乙\n\n丙')
+    t.current().putCursor(2)
+
+    await t.workspace.run('compare.plain')
+    await t.workspace.run('compare.close')
+
+    expect(t.current().focused).toEqual([2])
+  })
+
+  it('进出一趟不置脏——快照是只读的', async () => {
+    const t = setup({ seed: { '/notes/a.md': '内容' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+
+    await t.workspace.run('compare.plain')
+    await t.workspace.run('compare.close')
+
+    expect(t.workspace.dirty.value).toBe(false)
   })
 })

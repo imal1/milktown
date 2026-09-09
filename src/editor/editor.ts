@@ -20,7 +20,8 @@ import {
   wrapInOrderedListCommand,
 } from '@milkdown/kit/preset/commonmark'
 import { insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm'
-import { Fragment, type Node } from '@milkdown/kit/prose/model'
+import { DOMSerializer, Fragment, type Node } from '@milkdown/kit/prose/model'
+import { TextSelection } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
 import { callCommand } from '@milkdown/kit/utils'
 
@@ -56,6 +57,16 @@ const commands: Record<FormatCommand, () => (ctx: Ctx) => boolean> = {
   'block.rule': () => callCommand(insertHrCommand.key),
 }
 
+/**
+ * 文档的一个顶层块，两种样子并排放着：排版后的 HTML，和它的 Markdown 原文。
+ * 「原文对照」左右两栏就是这两个字段，一行一个块——对齐的单位是块，不是
+ * 视觉行（ADR 0014、ADR 0015）。
+ */
+export interface DocumentBlock {
+  html: string
+  markdown: string
+}
+
 /** 按键的修饰键。名字对齐 `KeyboardEvent`。 */
 export interface Modifiers {
   metaKey?: boolean
@@ -84,6 +95,12 @@ export interface DocumentEditor {
    * 段上的标记每敲一下就推挤一次（ADR 0014）。
    */
   onComposition: (fn: (composing: boolean) => void) => void
+  /** 当前文档拆成顶层块，供「原文对照」两栏并排。 */
+  blocks: () => DocumentBlock[]
+  /** 光标落在第几个顶层块上。双页视图进入时记下它，退出时照它回来。 */
+  blockIndex: () => number
+  /** 把光标放回第几个顶层块，并聚焦。越界的下标夹到文档范围内。 */
+  focusBlock: (index: number) => void
 }
 
 export async function mountEditor(
@@ -206,5 +223,46 @@ export async function mountEditor(
     onComposition: (fn) => {
       composeListeners.push(fn)
     },
+    blocks: () => {
+      const out: DocumentBlock[] = []
+      crepe.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx)
+        const serialize = ctx.get(serializerCtx)
+        const doc = withoutEmptyParagraphs(view.state.doc)
+        // 排版用编辑器自己的 schema 序列化成 DOM——纸上那一栏和写作视图里
+        // 看到的是同一套规则，不是第二个 Markdown 渲染器（ADR 0002）。
+        const toDom = DOMSerializer.fromSchema(view.state.schema)
+        doc.forEach((child) => {
+          const holder = document.createElement('div')
+          holder.appendChild(toDom.serializeNode(child))
+          out.push({
+            html: holder.innerHTML,
+            // 单块文档：序列化器只接顶层节点，所以给它套一个只装这一块的 doc。
+            markdown: serialize(doc.copy(Fragment.from(child))).trimEnd(),
+          })
+        })
+      })
+      return out
+    },
+    blockIndex: () => {
+      let index = 0
+      withView((view) => {
+        const { $from } = view.state.selection
+        index = $from.depth === 0 ? 0 : $from.index(0)
+      })
+      return index
+    },
+    focusBlock: (index) =>
+      withView((view) => {
+        const { doc } = view.state
+        if (doc.childCount === 0) return
+        const at = Math.min(Math.max(index, 0), doc.childCount - 1)
+        let pos = 1
+        for (let i = 0; i < at; i++) pos += doc.child(i).nodeSize
+        view.dispatch(
+          view.state.tr.setSelection(TextSelection.near(doc.resolve(pos))).scrollIntoView()
+        )
+        view.focus()
+      }),
   }
 }

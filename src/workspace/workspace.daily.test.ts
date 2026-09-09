@@ -163,3 +163,48 @@ describe('版本历史', () => {
     expect([...fs.dirs].some((path) => path.includes('.milktown'))).toBe(false)
   }, 30_000)
 })
+
+describe('对照视图', () => {
+  it('进出一趟，文档一个字节没变', async () => {
+    const source = '# 标题\n\n正文，带 **加粗**。\n\n- 甲\n- 乙\n'
+    const { workspace, fs } = await setup({ '/notes/a.md': source })
+    await workspace.openPath('/notes/a.md')
+
+    await workspace.openCompare('plain')
+    workspace.closeCompare()
+    await workspace.save()
+
+    expect(fs.files.get('/notes/a.md')).toBe(source)
+    expect(workspace.dirty.value).toBe(false)
+  }, 30_000)
+
+  it('原文对照：左边排版，右边同一个块的原文', async () => {
+    const { workspace } = await setup({ '/notes/a.md': '# 标题\n\n正文\n' })
+    await workspace.openPath('/notes/a.md')
+
+    await workspace.openCompare('plain')
+
+    const rows = workspace.compareRows.value
+    expect(rows).toHaveLength(2)
+    expect(rows[0]!.left.html).toContain('<h1')
+    expect(rows[0]!.right.text).toBe('# 标题')
+  }, 30_000)
+
+  it('磁盘对照：改了不保存时，左边是磁盘上那份，右边是当前这份', async () => {
+    const { workspace, fs } = await setup({ '/notes/a.md': '磁盘上的\n' })
+    await workspace.openPath('/notes/a.md')
+
+    // 改几个字：走源码模式改，退出时真相源交回编辑器（ADR 0009），
+    // 所以这确实是一次落在文档上的修改，不是往状态里塞字符串。
+    await workspace.toggleSourceMode()
+    workspace.editSource('改过的')
+    await workspace.openCompare('disk')
+
+    expect(workspace.sourceMode.value).toBe(false)
+    expect(workspace.compareNote.value).toBe('1 行新增 · 1 行删除')
+    expect(workspace.compareRows.value.map((row) => row.left.text)).toContain('磁盘上的')
+    expect(workspace.compareRows.value.map((row) => row.right.text)).toContain('改过的')
+    // 只读：磁盘上那份还是原样。
+    expect(fs.files.get('/notes/a.md')).toBe('磁盘上的\n')
+  }, 30_000)
+})

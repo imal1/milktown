@@ -9,10 +9,15 @@ import type { RecentFile, RecentFiles } from '../recent/recent-files'
 import type { WindowsPort } from '../windows/windows'
 import type { Draft, Drafts } from './drafts'
 import { isFormatCommand } from '../editor/format'
+import type { CompareRow } from './compare'
+import { describeChanges, diskRows, plainRows } from './compare'
 import type { Intent } from './keymap'
 
 /** 三选一确认的结果。系统对话框只有两个按钮，所以这个由应用自绘。 */
 export type ConfirmChoice = 'save' | 'discard' | 'cancel'
+
+/** 哪一种对照。两者共用同一个外壳，只有两栏的来源不同（ADR 0015）。 */
+export type CompareKind = 'plain' | 'disk'
 
 export interface WorkspaceDeps {
   files: FileService
@@ -54,6 +59,17 @@ export function createWorkspace(deps: WorkspaceDeps) {
   const recentList = ref<RecentFile[]>([])
   const recentOpen = ref(false)
   const recentIndex = ref(0)
+
+  /**
+   * 原文对照与磁盘对照。两栏都是进入那一刻取的快照，只读，退出即丢弃；
+   * 编辑器一直在底下活着，所以进出一趟不改动文档（ADR 0015）。
+   */
+  const compareOpen = ref(false)
+  const compareKind = ref<CompareKind>('plain')
+  const compareRows = ref<CompareRow[]>([])
+  const compareNote = ref('')
+  /** 进入时光标所在的块，退出时照它回来。 */
+  let compareBlock = 0
 
   const diffOpen = ref(false)
   const versions = ref<Version[]>([])
@@ -152,6 +168,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
    */
   async function toggleSourceMode() {
     if (busy()) return
+    // 互斥组：从对照视图直接切过来，先把对照关掉（ADR 0015）。
+    closeCompare()
     if (sourceMode.value) {
       const text = sourceText.value
       sourceMode.value = false
@@ -240,6 +258,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     dirty.value = false
     recentOpen.value = false
     diffOpen.value = false
+    compareOpen.value = false
     now.value = deps.now().getTime()
     recentList.value = deps.recent.remember(path, now.value)
 
@@ -268,6 +287,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     dirty.value = false
     recentOpen.value = false
     diffOpen.value = false
+    compareOpen.value = false
     flash('新文档')
   }
 
@@ -349,6 +369,54 @@ export function createWorkspace(deps: WorkspaceDeps) {
     } finally {
       if (versionIndex.value === index) diffLoading.value = false
     }
+  }
+
+  /** 磁盘对照比的是「当前文件此刻在磁盘上的样子」，没有文件就没得比。 */
+  const canCompareDisk = computed(() => currentPath.value !== null)
+
+  /**
+   * ⌥⌘/ 与 ⇧⌘/：进对照视图。
+   *
+   * 进入前真相源先交回编辑器——人在源码模式里按下它，等于应用替他先按了
+   * 一次 ⌘/（ADR 0015）。之后两栏取的都是快照，编辑器不再被碰。
+   */
+  async function openCompare(kind: CompareKind) {
+    if (busy()) return
+    if (sourceMode.value) await toggleSourceMode()
+
+    if (kind === 'disk' && !currentPath.value) {
+      await deps.alert('这个文档还没有保存过，磁盘上没有可以对照的内容。先按 ⌘S 保存一次。')
+      return
+    }
+
+    const instance = editor.value
+    if (!instance) return
+    compareBlock = instance.blockIndex()
+
+    if (kind === 'plain') {
+      const blocks = instance.blocks()
+      compareRows.value = plainRows(blocks)
+      compareNote.value = `${blocks.length} 段`
+    } else {
+      const path = currentPath.value!
+      const disk = (await deps.files.read(path)).content
+      const changes = lineDiff(disk, instance.read())
+      compareRows.value = diskRows(changes)
+      compareNote.value = describeChanges(changes)
+    }
+
+    compareKind.value = kind
+    recentOpen.value = false
+    diffOpen.value = false
+    compareOpen.value = true
+  }
+
+  /** Esc 永远回写作视图，光标落回进来时那一段（ADR 0015）。 */
+  function closeCompare() {
+    if (!compareOpen.value) return
+    compareOpen.value = false
+    compareRows.value = []
+    editor.value?.focusBlock(compareBlock)
   }
 
   async function openDiffView() {
@@ -474,6 +542,12 @@ export function createWorkspace(deps: WorkspaceDeps) {
         return
       case 'source.toggle':
         return toggleSourceMode()
+      case 'compare.plain':
+        return openCompare('plain')
+      case 'compare.disk':
+        return openCompare('disk')
+      case 'compare.close':
+        return closeCompare()
       case 'find.open':
         return openFind()
       case 'find.close':
@@ -522,6 +596,11 @@ export function createWorkspace(deps: WorkspaceDeps) {
     recentList,
     recentOpen,
     recentIndex,
+    compareOpen,
+    compareKind,
+    compareRows,
+    compareNote,
+    canCompareDisk,
     diffOpen,
     versions,
     versionIndex,
@@ -542,6 +621,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
     restoreDraft,
     toggleRecent,
     toggleSourceMode,
+    openCompare,
+    closeCompare,
     editSource,
   }
 }

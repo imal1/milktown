@@ -191,3 +191,45 @@ describe('输入法', () => {
     expect(seen).toEqual([true, false])
   })
 })
+
+describe('原文对照要的块', () => {
+  it('一个块一行：左边排版后的 HTML，右边这个块的原文', async () => {
+    write('# 标题\n正文，带 **加粗**。')
+    const blocks = editor.blocks()
+
+    expect(blocks).toHaveLength(2)
+    expect(blocks[0]!.html).toContain('<h1')
+    expect(blocks[0]!.markdown).toBe('# 标题')
+    expect(blocks[1]!.html).toContain('<strong>')
+    expect(blocks[1]!.markdown).toBe('正文，带 **加粗**。')
+  })
+
+  it('拆块不改文档：拆完再读出来还是同一份文本', () => {
+    write('# 标题\n正文')
+    const before = editor.read()
+
+    editor.blocks()
+
+    expect(editor.read()).toBe(before)
+  })
+})
+
+describe('光标所在的块', () => {
+  it('报得出光标在第几段，也放得回去', () => {
+    write('甲\n乙\n丙')
+    expect(editor.blockIndex()).toBe(2)
+
+    editor.focusBlock(0)
+    expect(editor.blockIndex()).toBe(0)
+  })
+
+  it('越界的下标夹到文档范围内，不炸', () => {
+    write('甲\n乙')
+
+    editor.focusBlock(99)
+    expect(editor.blockIndex()).toBe(1)
+
+    editor.focusBlock(-3)
+    expect(editor.blockIndex()).toBe(0)
+  })
+})

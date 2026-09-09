@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import CompareView from './components/CompareView.vue'
 import ConfirmLayer from './components/ConfirmLayer.vue'
 import DiffView from './components/DiffView.vue'
 import RecentPanel from './components/RecentPanel.vue'
@@ -49,11 +50,19 @@ const drop = ref<DropHint | null>(null)
 /** 谁在前台，决定同一个按键落到哪套语义上。 */
 const mode = computed<Mode>(() => {
   if (confirm.question.value !== null) return 'confirm'
+  if (workspace.compareOpen.value) return 'compare'
   if (workspace.diffOpen.value) return 'diff'
   if (workspace.recentOpen.value) return 'recent'
   if (workspace.findOpen.value) return 'find'
   return 'writing'
 })
+
+/** 对照视图两栏的抬头与标题，两种对照只有这几个字不同。 */
+const compare = computed(() =>
+  workspace.compareKind.value === 'plain'
+    ? { title: '原文对照', leftHead: '排版', rightHead: 'Markdown 原文' }
+    : { title: '磁盘对照', leftHead: '磁盘上那份', rightHead: '当前这份' }
+)
 
 const emptyStateFiles = computed(() =>
   workspace.recentList.value
@@ -223,6 +232,16 @@ onBeforeUnmount(async () => {
       @select="workspace.selectVersion($event)"
       @restore="workspace.restoreVersion()"
       @close="workspace.diffOpen.value = false"
+    />
+
+    <CompareView
+      v-if="workspace.compareOpen.value"
+      :title="compare.title"
+      :note="workspace.compareNote.value"
+      :rows="workspace.compareRows.value"
+      :left-head="compare.leftHead"
+      :right-head="compare.rightHead"
+      @close="workspace.closeCompare()"
     />
 
     <ConfirmLayer

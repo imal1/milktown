@@ -88,3 +88,24 @@ describe('源码模式与查找条', () => {
     expect(intentOf(cmd('/'), 'find')).toBe('source.toggle')
   })
 })
+
+describe('对照视图', () => {
+  it('⌥⌘/ 进原文对照，⇧⌘/ 进磁盘对照，光秃秃的 ⌘/ 还是源码模式', () => {
+    expect(intentOf({ key: '/', metaKey: true }, 'writing')).toBe('source.toggle')
+    expect(intentOf({ key: '/', metaKey: true, altKey: true }, 'writing')).toBe('compare.plain')
+    expect(intentOf({ key: '/', metaKey: true, shiftKey: true }, 'writing')).toBe('compare.disk')
+  })
+
+  it('⌥ 把这个键变成 ÷，认的是同一个意图', () => {
+    expect(intentOf({ key: '÷', metaKey: true, altKey: true }, 'writing')).toBe('compare.plain')
+  })
+
+  it('对照视图里 Esc 出去，换到别的视图放行，其余吞掉', () => {
+    expect(intentOf({ key: 'Escape' }, 'compare')).toBe('compare.close')
+    expect(intentOf({ key: '/', metaKey: true }, 'compare')).toBe('source.toggle')
+    expect(intentOf({ key: '/', metaKey: true, shiftKey: true }, 'compare')).toBe('compare.disk')
+    expect(intentOf({ key: 'h', metaKey: true, shiftKey: true }, 'compare')).toBe('diff.open')
+    expect(intentOf({ key: 's', metaKey: true }, 'compare')).toBe('swallow')
+    expect(intentOf({ key: 'a', metaKey: true }, 'compare')).toBe('swallow')
+  })
+})
