@@ -42,3 +42,18 @@ it('空文档的纸上有起手提示，最近文件一个都没有时也在', a
 
   expect(host.querySelector('.empty-state .hint')?.textContent).toContain('直接开始写')
 }, 30_000)
+
+it('空文档的便条列着最常用的几条，写着菜单里那几个键', async () => {
+  host = document.createElement('div')
+  document.body.append(host)
+
+  app = createApp(App)
+  app.mount(host)
+  await tick()
+
+  const rows = [...host.querySelectorAll('.empty-state .starter-row')].map((row) =>
+    row.textContent?.replace(/\s+/g, '')
+  )
+  expect(rows).toEqual(['标题1⌘1', '加粗⌘B', '引用⌥⌘Q', '代码块⌥⌘C', '查找替换⌘F', '看原文⌘/'])
+  expect(host.querySelector('.empty-state .starter-note')?.textContent).toContain('打第一个字')
+}, 30_000)

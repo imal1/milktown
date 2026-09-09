@@ -338,3 +338,22 @@ describe('光标所在段显出 Markdown 标记', () => {
     expect(marks()).toEqual([])
   })
 })
+
+describe('空文档的起手提示', () => {
+  /** 提示是 placeholder：画在纸上，不在文档里（票 #21）。 */
+  const placeholder = () => host.querySelector('.milktown-prose [data-placeholder]')
+
+  it('空文档纸上有提示文字', () => {
+    expect(placeholder()?.getAttribute('data-placeholder')).toBe('开始写')
+  })
+
+  it('提示文字不进 read()——它不是文档内容', () => {
+    expect(editor.read()).toBe('')
+  })
+
+  it('敲第一个字就消失', () => {
+    editor.type('甲')
+    expect(placeholder()).toBeNull()
+    expect(editor.read()).toBe('甲\n')
+  })
+})

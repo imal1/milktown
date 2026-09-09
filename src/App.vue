@@ -18,6 +18,7 @@ import { tauriWindows } from './windows/windows'
 import { planBoot } from './workspace/boot'
 import { createDrafts } from './workspace/drafts'
 import { describeDrop, type DropHint } from './workspace/drag-drop'
+import { STARTER_HINTS } from './workspace/starter-hints'
 import { type Intent, intentOf, type Mode } from './workspace/keymap'
 import { useConfirm } from './workspace/use-confirm'
 import { createWorkspace } from './workspace/workspace'
@@ -202,6 +203,20 @@ onBeforeUnmount(async () => {
               <span class="meta">{{ file.dir }} · {{ file.when }}</span>
             </button>
           </div>
+          <!--
+            没有工具栏，排版命令全在菜单里（ADR 0013）——没翻过菜单的人不知道
+            它们在那儿。这张便条列几条最常用的，打第一个字就走。
+          -->
+          <div class="label starter-label">用得最多的几条</div>
+          <div class="starter">
+            <div v-for="hint in STARTER_HINTS" :key="hint.id" class="starter-row">
+              <span>{{ hint.label }}</span>
+              <kbd>{{ hint.key }}</kbd>
+            </div>
+          </div>
+          <p class="starter-note">
+            余下的都在菜单栏的「格式」与「段落」里。打第一个字，这张便条就走。
+          </p>
         </div>
         <!-- 两个持有方只有一个在场，但编辑器的挂载点要一直留着（ADR 0009）。 -->
         <div v-show="!workspace.sourceMode.value" ref="host" class="milktown-editor" />
@@ -334,6 +349,32 @@ onBeforeUnmount(async () => {
   font-size: 11px;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.empty-state .starter-label {
+  margin-top: 30px;
+}
+
+.empty-state .starter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 40px;
+}
+
+.empty-state .starter-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.empty-state .starter-note {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
 }
 
 /* 拖拽悬停：整窗蒙上一层纸色，连标题栏一起（2c）。不画边框、不画虚线。 */
