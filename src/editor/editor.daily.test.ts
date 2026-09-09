@@ -179,3 +179,15 @@ describe('保存出去的文本', () => {
     expect(await roundTrip('- 甲\n-\n- 乙\n')).not.toContain('<br />')
   })
 })
+
+describe('输入法', () => {
+  it('合成的起止报出来了——纸面靠它在候选框开着时不动', () => {
+    const seen: boolean[] = []
+    editor.onComposition((composing) => seen.push(composing))
+
+    host.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+    host.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }))
+
+    expect(seen).toEqual([true, false])
+  })
+})

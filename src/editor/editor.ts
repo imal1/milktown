@@ -79,6 +79,11 @@ export interface DocumentEditor {
   press: (key: string, modifiers?: Modifiers) => void
   /** 走一条排版命令。写作面上没有工具栏，这是「格式」「段落」两栏菜单的落点。 */
   format: (command: FormatCommand) => void
+  /**
+   * 输入法合成的起止。合成期间纸面上不许动——字数每敲一下拼音就跳，
+   * 段上的标记每敲一下就推挤一次（ADR 0014）。
+   */
+  onComposition: (fn: (composing: boolean) => void) => void
 }
 
 export async function mountEditor(
@@ -86,6 +91,15 @@ export async function mountEditor(
   markdown: string
 ): Promise<DocumentEditor> {
   const listeners: ((markdown: string) => void)[] = []
+  const composeListeners: ((composing: boolean) => void)[] = []
+
+  function announceComposing(composing: boolean) {
+    for (const fn of composeListeners) fn(composing)
+  }
+  // 挂在挂载点上而不是 ProseMirror 的 DOM 上：后者在 `crepe.create()` 之后
+  // 才存在，而且重建视图时会被换掉。
+  root.addEventListener('compositionstart', () => announceComposing(true))
+  root.addEventListener('compositionend', () => announceComposing(false))
 
   const crepe = new Crepe({
     root,
@@ -188,6 +202,9 @@ export async function mountEditor(
       }),
     format: (command) => {
       crepe.editor.action(commands[command]())
+    },
+    onComposition: (fn) => {
+      composeListeners.push(fn)
     },
   }
 }

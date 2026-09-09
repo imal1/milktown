@@ -44,6 +44,9 @@ export function createWorkspace(deps: WorkspaceDeps) {
   const currentPath = ref<string | null>(null)
   const dirty = ref(false)
   const words = ref(0)
+  /** 输入法合成中。期间字数不更新，合成结束时补一次。 */
+  const composing = ref(false)
+  let pendingCount: string | null = null
   const toast = ref('')
   const saving = ref(false)
   const now = ref(deps.now().getTime())
@@ -86,9 +89,24 @@ export function createWorkspace(deps: WorkspaceDeps) {
    * 字数口径：原文字符数，去掉首尾空白（ADR 0009）。两个模式数的是同一个
    * 东西，⌘/ 前后不跳变。ADR 里的 300ms 节流是为了挡住「为了数字数而序列化
    * 一次文档」，这里的 markdown 是编辑器变更事件顺手带来的，没有那笔开销。
+   *
+   * 输入法合成期间不数：一串拼音每敲一个字母都会进来一次，数字跟着跳，
+   * 而那串字母根本还不是文档（ADR 0014 同一条规矩）。攒着，合成结束再数。
    */
   function recount(markdown: string) {
+    if (composing.value) {
+      pendingCount = markdown
+      return
+    }
     words.value = markdown.trim().length
+  }
+
+  /** 输入法合成的起止。两个真相源持有方都往这里报。 */
+  function setComposing(next: boolean) {
+    composing.value = next
+    if (next || pendingCount === null) return
+    words.value = pendingCount.trim().length
+    pendingCount = null
   }
 
   function flash(text: string, ms = 1800) {
@@ -119,6 +137,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     root.innerHTML = ''
 
     const instance = await deps.mountEditor(root, markdown)
+    instance.onComposition(setComposing)
     recount(instance.read())
     instance.onChange((next) => {
       dirty.value = true
@@ -494,6 +513,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
     fileName,
     dirty,
     words,
+    composing,
+    setComposing,
     toast,
     saving,
     now,

@@ -199,6 +199,7 @@ onBeforeUnmount(async () => {
           :text="workspace.sourceText.value"
           :find-open="workspace.findOpen.value"
           @edit="workspace.editSource($event)"
+          @composing="workspace.setComposing($event)"
         />
       </div>
     </div>

@@ -20,8 +20,14 @@ const emit = defineEmits<{ toggleRecent: [] }>()
     <div class="lights-space" data-tauri-drag-region />
 
     <div class="center" data-tauri-drag-region>
+      <!--
+        文件名和 ▾ 是一个可点的整体，不是一段文字旁边挂个箭头。热区占满标题栏
+        的高度，空文档时也有 96px 宽——「未命名」只有三个字，点不着。
+      -->
       <button class="title" :class="{ on: recentOpen }" @click="emit('toggleRecent')">
-        <span class="name">{{ fileName }}{{ dirty ? ' *' : '' }}</span>
+        <span class="name">{{ fileName }}</span>
+        <!-- 脏用一个点，不用星号：星号会跟文件名连成一串读。 -->
+        <span v-if="dirty" class="dot" aria-label="未保存" />
         <span class="caret">▾</span>
       </button>
       <!-- 第三处模式指示：标题栏、菜单里的勾、以及正文换了面孔。 -->
@@ -59,8 +65,11 @@ const emit = defineEmits<{ toggleRecent: [] }>()
 .title {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  padding: 2px 8px;
+  height: var(--titlebar-height);
+  min-width: 96px;
+  padding: 0 8px;
   border: none;
   border-radius: 4px;
   background: transparent;
@@ -68,8 +77,21 @@ const emit = defineEmits<{ toggleRecent: [] }>()
   cursor: pointer;
 }
 
+.title:hover,
 .title.on {
   background: var(--highlight);
+}
+
+.title:focus-visible {
+  outline: 1.5px solid var(--focus);
+  outline-offset: -1.5px;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--dirty);
 }
 
 .name {
@@ -95,6 +117,6 @@ const emit = defineEmits<{ toggleRecent: [] }>()
 .words {
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--muted);
+  color: var(--ink-faint);
 }
 </style>

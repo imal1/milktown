@@ -20,6 +20,7 @@ import { createWorkspace } from './workspace'
 function fakeEditor() {
   let markdown = ''
   let listener: ((markdown: string) => void) | undefined
+  let composeListener: ((composing: boolean) => void) | undefined
   let destroyed = 0
   const formatted: string[] = []
 
@@ -37,6 +38,9 @@ function fakeEditor() {
     press: () => {},
     // 假编辑器不排版，只记下收到了哪条命令——真的排版在编辑器层验。
     format: (command) => void formatted.push(command),
+    onComposition: (fn) => {
+      composeListener = fn
+    },
   }
 
   return {
@@ -52,6 +56,10 @@ function fakeEditor() {
     },
     setContent(next: string) {
       markdown = next
+    },
+    /** 模拟输入法：合成开始、合成中敲字、合成结束。 */
+    compose(composing: boolean) {
+      composeListener?.(composing)
     },
   }
 }
@@ -461,6 +469,29 @@ describe('工作区 · 字数', () => {
     t.current().type('今天写了三行字')
 
     expect(t.workspace.words.value).toBe(7)
+  })
+
+  it('输入法合成期间字数不动，合成结束才补上', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('今天')
+
+    t.current().compose(true)
+    // 候选框还开着，纸面上是拼音串 —— 它还不是文档。
+    t.current().type('今天zhongwen')
+    expect(t.workspace.words.value).toBe(2)
+
+    t.current().compose(false)
+    expect(t.workspace.words.value).toBe(10)
+  })
+
+  it('合成期间照样置脏——脏是个开关，不会跳', async () => {
+    const t = setup()
+    await t.start()
+    t.current().compose(true)
+    t.current().type('zhong')
+
+    expect(t.workspace.dirty.value).toBe(true)
   })
 })
 
