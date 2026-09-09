@@ -137,6 +137,11 @@ button {
  * 覆盖，不 fork：这几个控件的行为都没问题，只有皮肤不对；fork 换来的是
  * 每次升级 Crepe 都要重新合一遍。
  *
+ * 图片那一条不照抄 Crepe 自己的选择器：它写的是
+ * `.milkdown-image-inline.empty.selected`，而组件只挂 `milkdown-image-inline`
+ * 与 `selected`，`empty` 从来不出现——那条规则在 Crepe 那边就是空转的。
+ * `skin.test.ts` 拿发布产物里真会挂上去的类名核对，正是为了挡这种情况。
+ *
  * 一处对不上设计稿：浮层离目标 10px，设计稿写的是 8px。那个数字硬编码在
  * Crepe 的 JS 里（`offset: 10`），只有 block-edit 把它开成了配置，而
  * block-edit 已经关了。为 2px 去 fork 不值。
@@ -153,9 +158,17 @@ button {
 .milktown-editor .milkdown-table-block .cell-handle,
 .milktown-editor .milkdown-table-block .cell-handle .button-group,
 .milktown-editor .milkdown-table-block .line-handle .add-button,
-.milktown-editor .milkdown-image-inline.empty.selected .empty-image-inline {
+.milktown-editor .milkdown-image-inline .empty-image-inline,
+.milktown-editor .milkdown-image-block > .image-edit {
   background: var(--paper);
   border: 1px solid var(--skin-edge);
   border-radius: 6px;
   box-shadow: var(--skin-shadow);
+}
+
+/* 整块的图片没有 Crepe 给的内边距，补上，跟行内那一版一样宽松。 */
+.milktown-editor .milkdown-image-block > .image-edit {
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
 }
