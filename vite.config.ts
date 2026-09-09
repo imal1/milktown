@@ -34,6 +34,9 @@ export default defineConfig({
     // Pure logic tests need no browser. The few tests that do (canonicalization)
     // opt in with a `@vitest-environment jsdom` docblock.
     environment: 'node',
+    // 默认 vitest 不处理 CSS，`?inline` 拿到的是空串。皮肤那条测试要读真的
+    // 样式表（`src/editor/skin.test.ts`），所以开着。
+    css: true,
     include: ['src/**/*.test.ts'],
     // jsdom 缺的浏览器 API 在这里补齐；node 环境的测试用不到它们。
     setupFiles: ['./src/test-setup.ts'],

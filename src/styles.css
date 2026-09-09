@@ -103,3 +103,34 @@ button {
   --crepe-font-default: var(--serif);
   --crepe-font-code: var(--mono);
 }
+
+/*
+ * 跟着内容走的那几个控件——链接气泡、表格把手、代码块的语言列表、图片、
+ * 公式——统一成纸的一套。ADR 0013 关掉的只是两条常驻工具栏，这些留着，
+ * 但它们长的是 Crepe 的默认样子，和纸不是一个世界的东西。
+ *
+ * 覆盖，不 fork：这几个控件的行为都没问题，只有皮肤不对；fork 换来的是
+ * 每次升级 Crepe 都要重新合一遍。
+ *
+ * 一处对不上设计稿：浮层离目标 10px，设计稿写的是 8px。那个数字硬编码在
+ * Crepe 的 JS 里（`offset: 10`），只有 block-edit 把它开成了配置，而
+ * block-edit 已经关了。为 2px 去 fork 不值。
+ */
+.milktown-editor {
+  --skin-edge: #e2dcce;
+  --skin-shadow: 0 6px 20px -8px rgba(40, 34, 26, 0.28);
+}
+
+.milktown-editor .milkdown-link-preview > .link-preview,
+.milktown-editor .milkdown-link-edit > .link-edit,
+.milktown-editor .milkdown-latex-inline-edit,
+.milktown-editor .milkdown-code-block .list-wrapper,
+.milktown-editor .milkdown-table-block .cell-handle,
+.milktown-editor .milkdown-table-block .cell-handle .button-group,
+.milktown-editor .milkdown-table-block .line-handle .add-button,
+.milktown-editor .milkdown-image-inline.empty.selected .empty-image-inline {
+  background: var(--paper);
+  border: 1px solid var(--skin-edge);
+  border-radius: 6px;
+  box-shadow: var(--skin-shadow);
+}
