@@ -6,7 +6,7 @@ import type { DiffLine } from '../history/line-diff'
 import { lineDiff } from '../history/line-diff'
 import type { History, Version } from '../history/version-store'
 import type { RecentFile, RecentFiles } from '../recent/recent-files'
-import type { WindowsPort } from '../windows/windows'
+import type { ViewName, WindowsPort } from '../windows/windows'
 import type { Draft, Drafts } from './drafts'
 import { isFormatCommand } from '../editor/format'
 import type { CompareRow } from './compare'
@@ -581,6 +581,25 @@ export function createWorkspace(deps: WorkspaceDeps) {
     editor.value = null
   }
 
+  /**
+   * 眼前在哪个视图里。四个视图互斥，写作视图是「哪个都不在」（ADR 0015）。
+   * 「视图」菜单的对钩照它画。
+   */
+  const currentView = computed<ViewName>(() => {
+    if (compareOpen.value) return compareKind.value === 'plain' ? 'compare.plain' : 'compare.disk'
+    if (diffOpen.value) return 'diff'
+    if (sourceMode.value) return 'source'
+    return 'writing'
+  })
+
+  // macOS 的菜单是应用级的一份，一个窗口挂不了自己那份，所以本窗口每次换视图
+  // 都要报上去；Rust 那边只听有焦点的那个窗口的。
+  watch(
+    [currentView, canCompareDisk],
+    ([view, canDisk]) => void deps.windows.showView(view, canDisk),
+    { immediate: true }
+  )
+
   return {
     // 状态
     currentPath,
@@ -601,6 +620,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     compareRows,
     compareNote,
     canCompareDisk,
+    currentView,
     diffOpen,
     versions,
     versionIndex,

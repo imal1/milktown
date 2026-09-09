@@ -30,6 +30,7 @@ const idleWindows: WindowsPort = {
   openFiles: async () => {},
   openDrafts: async () => {},
   boot: async () => ({ path: null, draft: null, startupPaths: [] }),
+  showView: async () => {},
 }
 
 async function setup(seed: Record<string, string> = {}, pickToSave: string | null = null) {

@@ -5,6 +5,7 @@
  * 这里跑的全是工作区自己的流程。
  */
 import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 
 import type { DocumentEditor } from '../editor/editor'
 import { createFileService } from '../files/file-service'
@@ -13,6 +14,7 @@ import { createHistory } from '../history/version-store'
 import { createRecentFiles, type KeyValuePort } from '../recent/recent-files'
 import type { WindowsPort } from '../windows/windows'
 import { createDrafts } from './drafts'
+import type { Intent } from './keymap'
 import type { ConfirmChoice } from './workspace'
 import { createWorkspace } from './workspace'
 
@@ -113,12 +115,14 @@ function setup(options: {
   const drafts = createDrafts(memoryStore())
   const claimed: (string | null)[] = []
   const opened: string[][] = []
+  const shownViews: { view: string; canCompareDisk: boolean }[] = []
   const windows: WindowsPort = {
     claim: async (path) => void claimed.push(path),
     focusIfOpen: async (path) => (options.openElsewhere ?? []).includes(path),
     openFiles: async (paths) => void opened.push(paths),
     openDrafts: async () => {},
     boot: async () => ({ path: null, draft: null, startupPaths: [] }),
+    showView: async (view, canCompareDisk) => void shownViews.push({ view, canCompareDisk }),
   }
 
   const workspace = createWorkspace({
@@ -149,6 +153,7 @@ function setup(options: {
     editors,
     drafts,
     claimed,
+    shownViews,
     opened,
     current: () => editors[editors.length - 1]!,
     advance: (ms: number) => {
@@ -837,5 +842,43 @@ describe('工作区 · 对照视图', () => {
     await t.workspace.run('compare.close')
 
     expect(t.workspace.dirty.value).toBe(false)
+  })
+})
+
+describe('工作区 · 报上去的视图', () => {
+  it('一开始就报一次写作视图，磁盘对照不可用', async () => {
+    const t = setup()
+    await t.start()
+
+    expect(t.shownViews[0]).toEqual({ view: 'writing', canCompareDisk: false })
+  })
+
+  it('四个视图各报各的名字，回到写作视图也报', async () => {
+    const t = setup({ seed: { '/notes/a.md': '内容' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+
+    for (const intent of ['source.toggle', 'compare.plain', 'compare.disk', 'compare.close']) {
+      await t.workspace.run(intent as Intent)
+      await nextTick()
+    }
+
+    // 报上去的是「换到了哪个视图」，不是「按了哪个键」——compare.close 报的是写作视图。
+    // 从源码模式进对照要先把真相源交回编辑器，那一步是真的异步（要重新挂载
+    // 编辑器），所以中间会掠过一次写作视图。菜单在那一瞬间一个钩都不打。
+    expect(t.shownViews.map((entry) => entry.view).join(' ')).toBe(
+      'writing writing source writing compare.plain compare.disk writing'
+    )
+  })
+
+  it('开了文件之后磁盘对照才可用——菜单据此置灰', async () => {
+    const t = setup({ seed: { '/notes/a.md': '内容' } })
+    await t.start()
+    expect(t.workspace.canCompareDisk.value).toBe(false)
+
+    await t.workspace.openPath('/notes/a.md')
+    await nextTick()
+
+    expect(t.shownViews.at(-1)).toEqual({ view: 'writing', canCompareDisk: true })
   })
 })
