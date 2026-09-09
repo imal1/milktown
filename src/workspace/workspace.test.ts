@@ -882,3 +882,56 @@ describe('工作区 · 报上去的视图', () => {
     expect(t.shownViews.at(-1)).toEqual({ view: 'writing', canCompareDisk: true })
   })
 })
+
+describe('工作区 · 字数口径面板', () => {
+  it('点开时按当前那份原文现算，再点收起', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('# 标题\n\n一段')
+
+    t.workspace.toggleWordStats()
+    expect(t.workspace.wordStatsOpen.value).toBe(true)
+    expect(t.workspace.wordStats.value).toEqual({
+      words: 8,
+      paragraphs: 2,
+      lines: 3,
+      minutes: 1,
+    })
+
+    t.workspace.toggleWordStats()
+    expect(t.workspace.wordStatsOpen.value).toBe(false)
+  })
+
+  it('源码模式里数的是源码那份——真相源在谁手上就问谁（ADR 0009）', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('原来的')
+    await t.workspace.run('source.toggle')
+    t.workspace.editSource('改过之后长一些')
+
+    t.workspace.toggleWordStats()
+
+    expect(t.workspace.wordStats.value.words).toBe('改过之后长一些'.length)
+  })
+
+  it('换到别的视图，口径面板收起来', async () => {
+    const t = setup()
+    await t.start()
+    t.workspace.toggleWordStats()
+
+    await t.workspace.run('compare.plain')
+    await nextTick()
+
+    expect(t.workspace.wordStatsOpen.value).toBe(false)
+  })
+
+  it('开最近文件时也收起来——两个浮层不叠着', async () => {
+    const t = setup()
+    await t.start()
+    t.workspace.toggleWordStats()
+
+    t.workspace.toggleRecent()
+
+    expect(t.workspace.wordStatsOpen.value).toBe(false)
+  })
+})

@@ -11,6 +11,8 @@ import type { Draft, Drafts } from './drafts'
 import { isFormatCommand } from '../editor/format'
 import type { CompareRow } from './compare'
 import { describeChanges, diskRows, plainRows } from './compare'
+import type { WordStats } from './word-count'
+import { countStats } from './word-count'
 import type { Intent } from './keymap'
 
 /** 三选一确认的结果。系统对话框只有两个按钮，所以这个由应用自绘。 */
@@ -55,6 +57,10 @@ export function createWorkspace(deps: WorkspaceDeps) {
   const toast = ref('')
   const saving = ref(false)
   const now = ref(deps.now().getTime())
+
+  /** 字数点开的那份口径面板。数字是节流出来的，这几个数是点开那一刻现算的。 */
+  const wordStatsOpen = ref(false)
+  const wordStats = ref<WordStats>(countStats(''))
 
   const recentList = ref<RecentFile[]>([])
   const recentOpen = ref(false)
@@ -476,7 +482,19 @@ export function createWorkspace(deps: WorkspaceDeps) {
     }
   }
 
+  /**
+   * 点开字数：现算一次口径面板要的那几个数。
+   *
+   * ADR 0009 的 300ms 节流挡的是「为了数字数而序列化一次文档」，这里是人主动
+   * 点开的一次，那笔开销该花。
+   */
+  function toggleWordStats() {
+    wordStatsOpen.value = !wordStatsOpen.value
+    if (wordStatsOpen.value) wordStats.value = countStats(currentMarkdown())
+  }
+
   function toggleRecent() {
+    wordStatsOpen.value = false
     recentOpen.value = !recentOpen.value
     recentIndex.value = 0
     now.value = deps.now().getTime()
@@ -592,6 +610,11 @@ export function createWorkspace(deps: WorkspaceDeps) {
     return 'writing'
   })
 
+  // 换了视图，口径面板就该收起来——它说的是写作视图里那份文档。
+  watch(currentView, () => {
+    wordStatsOpen.value = false
+  })
+
   // macOS 的菜单是应用级的一份，一个窗口挂不了自己那份，所以本窗口每次换视图
   // 都要报上去；Rust 那边只听有焦点的那个窗口的。
   watch(
@@ -615,6 +638,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
     recentList,
     recentOpen,
     recentIndex,
+    wordStatsOpen,
+    wordStats,
     compareOpen,
     compareKind,
     compareRows,
@@ -640,6 +665,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     requestClose,
     restoreDraft,
     toggleRecent,
+    toggleWordStats,
     toggleSourceMode,
     openCompare,
     closeCompare,

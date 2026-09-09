@@ -179,7 +179,10 @@ onBeforeUnmount(async () => {
       :words="workspace.words.value"
       :recent-open="workspace.recentOpen.value"
       :source-mode="workspace.sourceMode.value"
+      :stats-open="workspace.wordStatsOpen.value"
+      :stats="workspace.wordStats.value"
       @toggle-recent="workspace.toggleRecent()"
+      @toggle-stats="workspace.toggleWordStats()"
     />
 
     <div class="canvas">
