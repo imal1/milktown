@@ -31,3 +31,14 @@ it('应用挂载后编辑器可用，标题栏显示「未命名」与字数 0',
   expect(host.querySelector('.milktown-editor .milkdown')).not.toBeNull()
   expect(host.querySelector('.words')?.textContent).toBe('0')
 }, 30_000)
+
+it('空文档的纸上有起手提示，最近文件一个都没有时也在', async () => {
+  host = document.createElement('div')
+  document.body.append(host)
+
+  app = createApp(App)
+  app.mount(host)
+  await tick()
+
+  expect(host.querySelector('.empty-state .hint')?.textContent).toContain('直接开始写')
+}, 30_000)

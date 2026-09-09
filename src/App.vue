@@ -175,12 +175,11 @@ onBeforeUnmount(async () => {
 
     <div class="canvas">
       <div class="sheet">
-        <div
-          v-if="workspace.showEmptyState.value && emptyStateFiles.length > 0"
-          class="empty-state"
-        >
-          <div class="label">最近文件</div>
-          <div class="rows">
+        <div v-if="workspace.showEmptyState.value" class="empty-state">
+          <!-- 空文档的纸上什么都没有，人不知道能干什么。这一行说清两条路。 -->
+          <p class="hint">直接开始写，或按 <kbd>⌘O</kbd> 打开最近文件。</p>
+          <div v-if="emptyStateFiles.length > 0" class="label">最近文件</div>
+          <div v-if="emptyStateFiles.length > 0" class="rows">
             <button
               v-for="file in emptyStateFiles"
               :key="file.path"
@@ -263,6 +262,17 @@ onBeforeUnmount(async () => {
 
 .empty-state {
   padding-bottom: 26px;
+}
+
+.empty-state .hint {
+  margin: 0 0 26px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.empty-state kbd {
+  font-family: var(--mono);
+  font-size: 12px;
 }
 
 .empty-state .label {
