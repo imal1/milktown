@@ -22,8 +22,40 @@ struct Windows {
     pending: Mutex<Vec<String>>,
     /// 新窗口标签的流水号。只增不减，避免和已关掉的窗口重名。
     next: Mutex<u32>,
+    /// 窗口标签 -> 它眼前在哪个视图里。菜单的对钩照它画。
+    views: Mutex<HashMap<String, ViewState>>,
     /// 第一个窗口的网页是否已经问过启动参数。
     booted: AtomicBool,
+}
+
+/// 一个窗口眼前的视图，以及磁盘对照此刻能不能用（#25）。
+#[derive(Clone, Default)]
+struct ViewState {
+    /// 网页报上来的视图名。默认的空串就是「一个钩都不打」。
+    view: String,
+    can_compare_disk: bool,
+}
+
+/// 「视图」栏那四项。id 与网页那边的 Intent 逐字对齐，顺序也是菜单里的顺序。
+const VIEW_ITEMS: [&str; 4] = [
+    "source.toggle",
+    "compare.plain",
+    "compare.disk",
+    "diff.open",
+];
+
+/// 视图名 -> 「视图」栏里该打钩的那一项。
+///
+/// 四项是一个互斥组：至多一项打钩。写作视图不在这四项里，那时候一个钩都没有
+/// ——「都不打钩」本身就是「我在写作视图」这个信息（ADR 0015）。
+fn checked_item(view: &str) -> Option<&'static str> {
+    match view {
+        "source" => Some("source.toggle"),
+        "compare.plain" => Some("compare.plain"),
+        "compare.disk" => Some("compare.disk"),
+        "diff" => Some("diff.open"),
+        _ => None,
+    }
 }
 
 /// 网页启动时问的那一次：这个窗口装什么，以及启动参数带进来了什么。
@@ -77,6 +109,31 @@ fn focus_path(window: Window, app: AppHandle, state: State<'_, Windows>, path: S
             true
         }
         None => false,
+    }
+}
+
+/// 网页报上来它眼前在哪个视图里。菜单据此打钩、给磁盘对照置灰。
+#[tauri::command]
+fn show_view(
+    window: Window,
+    app: AppHandle,
+    state: State<'_, Windows>,
+    view: String,
+    can_compare_disk: bool,
+) {
+    let next = ViewState {
+        view,
+        can_compare_disk,
+    };
+    state
+        .views
+        .lock()
+        .unwrap()
+        .insert(window.label().to_string(), next.clone());
+    // macOS 的菜单是应用级的，一个窗口挂不了自己那份（`Window::set_menu` 在
+    // macOS 上是空操作）。所以对钩只听眼前那个窗口的，焦点换过去时再补一次。
+    if window.is_focused().unwrap_or(false) {
+        paint_view_menu(&app, &next);
     }
 }
 
@@ -191,10 +248,75 @@ fn deliver(app: &AppHandle, paths: Vec<String>) {
     open_all(app, paths);
 }
 
+/// 把「视图」栏的对钩画成这个窗口的样子。
+#[cfg(target_os = "macos")]
+fn paint_view_menu(app: &AppHandle, state: &ViewState) {
+    let Some(menu) = app.try_state::<ViewMenu>() else {
+        return;
+    };
+    let checked = checked_item(&state.view);
+    for (index, id) in VIEW_ITEMS.iter().enumerate() {
+        let Some(item) = menu.items.get(index) else {
+            continue;
+        };
+        let _ = item.set_checked(checked == Some(*id));
+        // 磁盘对照要有当前文件才比得了。没有文件是「比不了」，不是「没改动」——
+        // 后者照样进得去（#25）。
+        if *id == "compare.disk" {
+            let _ = item.set_enabled(state.can_compare_disk);
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn paint_view_menu(_app: &AppHandle, _state: &ViewState) {}
+
+/// 「视图」栏那四项的句柄，下标与 `VIEW_ITEMS` 对齐。
+#[cfg(target_os = "macos")]
+struct ViewMenu {
+    items: Vec<tauri::menu::CheckMenuItem<tauri::Wry>>,
+}
+
 /// 菜单栏文案见设计 2d。自定义项的 id 就是网页那边的 Intent 字符串。
 #[cfg(target_os = "macos")]
 fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
-    use tauri::menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu, WINDOW_SUBMENU_ID};
+    use tauri::menu::{
+        AboutMetadata, CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu,
+        WINDOW_SUBMENU_ID,
+    };
+
+    // 四项一个互斥组，勾在哪一项上由网页报上来（`show_view`）。建出来时全不勾，
+    // 也就是写作视图；磁盘对照先置灰，等网页说这个窗口有文件。
+    let views = [
+        CheckMenuItem::with_id(app, VIEW_ITEMS[0], "源码模式", true, false, Some("CmdOrCtrl+/"))?,
+        CheckMenuItem::with_id(
+            app,
+            VIEW_ITEMS[1],
+            "原文对照",
+            true,
+            false,
+            Some("Alt+CmdOrCtrl+/"),
+        )?,
+        CheckMenuItem::with_id(
+            app,
+            VIEW_ITEMS[2],
+            "磁盘对照",
+            false,
+            false,
+            Some("Shift+CmdOrCtrl+/"),
+        )?,
+        CheckMenuItem::with_id(
+            app,
+            VIEW_ITEMS[3],
+            "版本对照",
+            true,
+            false,
+            Some("Shift+CmdOrCtrl+H"),
+        )?,
+    ];
+    app.manage(ViewMenu {
+        items: views.to_vec(),
+    });
 
     Menu::with_items(
         app,
@@ -245,16 +367,72 @@ fn build_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
                     &MenuItem::with_id(app, "find.open", "查找与替换…", true, Some("CmdOrCtrl+F"))?,
                 ],
             )?,
+            // 写作面上没有工具栏（ADR 0013）。这两栏就是排版的全部入口，
+            // 项目 id 与 `src/editor/format.ts` 里的 FormatCommand 逐字对齐。
+            &Submenu::with_items(
+                app,
+                "格式",
+                true,
+                &[
+                    &MenuItem::with_id(app, "format.strong", "加粗", true, Some("CmdOrCtrl+B"))?,
+                    &MenuItem::with_id(app, "format.emphasis", "斜体", true, Some("CmdOrCtrl+I"))?,
+                    &MenuItem::with_id(
+                        app,
+                        "format.code",
+                        "行内代码",
+                        true,
+                        Some("Shift+CmdOrCtrl+Backquote"),
+                    )?,
+                    &MenuItem::with_id(
+                        app,
+                        "format.strikethrough",
+                        "删除线",
+                        true,
+                        Some("Shift+CmdOrCtrl+X"),
+                    )?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &MenuItem::with_id(app, "format.link", "超链接", true, Some("CmdOrCtrl+K"))?,
+                ],
+            )?,
+            &Submenu::with_items(
+                app,
+                "段落",
+                true,
+                &[
+                    &MenuItem::with_id(app, "block.text", "正文", true, Some("CmdOrCtrl+0"))?,
+                    &MenuItem::with_id(app, "block.h1", "标题 1", true, Some("CmdOrCtrl+1"))?,
+                    &MenuItem::with_id(app, "block.h2", "标题 2", true, Some("CmdOrCtrl+2"))?,
+                    &MenuItem::with_id(app, "block.h3", "标题 3", true, Some("CmdOrCtrl+3"))?,
+                    &MenuItem::with_id(app, "block.h4", "标题 4", true, Some("CmdOrCtrl+4"))?,
+                    &MenuItem::with_id(app, "block.h5", "标题 5", true, Some("CmdOrCtrl+5"))?,
+                    &MenuItem::with_id(app, "block.h6", "标题 6", true, Some("CmdOrCtrl+6"))?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &MenuItem::with_id(
+                        app,
+                        "block.bullet",
+                        "无序列表",
+                        true,
+                        Some("Alt+CmdOrCtrl+U"),
+                    )?,
+                    &MenuItem::with_id(
+                        app,
+                        "block.ordered",
+                        "有序列表",
+                        true,
+                        Some("Alt+CmdOrCtrl+O"),
+                    )?,
+                    &MenuItem::with_id(app, "block.quote", "引用", true, Some("Alt+CmdOrCtrl+Q"))?,
+                    &MenuItem::with_id(app, "block.code", "代码块", true, Some("Alt+CmdOrCtrl+C"))?,
+                    &PredefinedMenuItem::separator(app)?,
+                    &MenuItem::with_id(app, "block.table", "表格", true, Some("Alt+CmdOrCtrl+T"))?,
+                    &MenuItem::with_id(app, "block.rule", "分隔线", true, Some("Alt+CmdOrCtrl+-"))?,
+                ],
+            )?,
             &Submenu::with_items(
                 app,
                 "视图",
                 true,
-                &[
-                    // ponytail: 不带勾。源码模式是每个窗口自己的状态，菜单是全应用一份的，
-                    // 勾要正确就得每个窗口各建一份菜单——菜单在这里的作用是让人发现 ⌘/ 存在。
-                    &MenuItem::with_id(app, "source.toggle", "源码模式", true, Some("CmdOrCtrl+/"))?,
-                    &MenuItem::with_id(app, "diff.open", "版本历史", true, Some("Shift+CmdOrCtrl+H"))?,
-                ],
+                &[&views[0], &views[1], &views[2], &views[3]],
             )?,
             // 这个 id 让 tauri 把它注册成 NSApp 的窗口菜单，窗口列表与切换由系统填。
             &Submenu::with_id_and_items(
@@ -290,12 +468,27 @@ pub fn run() {
             app.state::<Windows>().pending.lock().unwrap().extend(args);
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if matches!(event, WindowEvent::Destroyed) {
+        .on_window_event(|window, event| match event {
+            WindowEvent::Destroyed => {
                 let state = window.state::<Windows>();
                 state.paths.lock().unwrap().remove(window.label());
                 state.assignments.lock().unwrap().remove(window.label());
+                state.views.lock().unwrap().remove(window.label());
             }
+            // 菜单只有一份，焦点换到谁身上就画成谁的样子——否则总有一个窗口
+            // 的对钩在撒谎。
+            WindowEvent::Focused(true) => {
+                let state = window.state::<Windows>();
+                let view = state
+                    .views
+                    .lock()
+                    .unwrap()
+                    .get(window.label())
+                    .cloned()
+                    .unwrap_or_default();
+                paint_view_menu(window.app_handle(), &view);
+            }
+            _ => {}
         })
         .on_menu_event(|app, event| {
             // 菜单项的 id 就是 Intent，直接交给当前窗口的网页去跑。
@@ -308,6 +501,7 @@ pub fn run() {
             boot,
             claim,
             focus_path,
+            show_view,
             open_files,
             open_drafts
         ]);
@@ -338,4 +532,66 @@ pub fn run() {
             }
             _ => {}
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{args_of, checked_item, VIEW_ITEMS};
+    use std::path::Path;
+
+    fn of(args: &[&str], cwd: &str) -> Vec<String> {
+        args_of(args.iter().map(|a| a.to_string()), Path::new(cwd))
+    }
+
+    #[test]
+    fn absolute_paths_pass_through() {
+        assert_eq!(of(&["/a/b.md"], "/work"), vec!["/a/b.md"]);
+    }
+
+    #[test]
+    fn relative_paths_expand_against_the_launch_directory() {
+        assert_eq!(of(&["notes.md"], "/work"), vec!["/work/notes.md"]);
+        assert_eq!(of(&["../notes.md"], "/work/deep"), vec!["/work/deep/../notes.md"]);
+    }
+
+    #[test]
+    fn flags_are_not_paths() {
+        assert_eq!(of(&["-n", "--verbose", "a.md"], "/work"), vec!["/work/a.md"]);
+    }
+
+    #[test]
+    fn no_arguments_yields_no_paths() {
+        assert!(of(&[], "/work").is_empty());
+    }
+
+    #[test]
+    fn every_view_checks_exactly_one_item() {
+        for (view, id) in [
+            ("source", "source.toggle"),
+            ("compare.plain", "compare.plain"),
+            ("compare.disk", "compare.disk"),
+            ("diff", "diff.open"),
+        ] {
+            assert_eq!(checked_item(view), Some(id), "视图 {view} 该勾 {id}");
+            let checked: Vec<_> = VIEW_ITEMS
+                .iter()
+                .filter(|item| checked_item(view) == Some(**item))
+                .collect();
+            assert_eq!(checked.len(), 1, "视图 {view} 勾了不止一项");
+        }
+    }
+
+    #[test]
+    fn the_writing_view_checks_nothing() {
+        assert_eq!(checked_item("writing"), None);
+        assert_eq!(checked_item(""), None);
+    }
+
+    #[test]
+    fn the_view_menu_has_all_four_items() {
+        assert_eq!(
+            VIEW_ITEMS,
+            ["source.toggle", "compare.plain", "compare.disk", "diff.open"]
+        );
+    }
 }

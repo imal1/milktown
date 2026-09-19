@@ -4,7 +4,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { findMatches, replaceEvery, stepMatch } from '../editor/find'
 
 const props = defineProps<{ text: string; findOpen: boolean }>()
-const emit = defineEmits<{ edit: [string] }>()
+const emit = defineEmits<{ edit: [string]; composing: [boolean] }>()
 
 const area = ref<HTMLTextAreaElement | null>(null)
 const query = ref('')
@@ -147,6 +147,8 @@ watch(
         spellcheck="false"
         @input="onInput"
         @keydown.tab="onTab"
+        @compositionstart="emit('composing', true)"
+        @compositionend="emit('composing', false)"
       />
     </div>
   </div>

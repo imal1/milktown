@@ -25,7 +25,17 @@ export interface WindowsPort {
   openFiles: (paths: string[]) => Promise<void>
   /** 每份草稿各开一个新窗口。 */
   openDrafts: (ids: string[]) => Promise<void>
+  /**
+   * 告诉注册表本窗口眼前在哪个视图里，「视图」菜单据此打钩。
+   *
+   * macOS 的菜单是应用级的一份，一个窗口挂不了自己那份，所以对钩只能由
+   * 眼前这个窗口报上来（ADR 0015）。
+   */
+  showView: (view: ViewName, canCompareDisk: boolean) => Promise<void>
 }
+
+/** 「视图」菜单认得的几个视图名。写作视图不打钩，所以它也在里面。 */
+export type ViewName = 'writing' | 'source' | 'compare.plain' | 'compare.disk' | 'diff'
 
 /** 浏览器里跑（vite dev）时没有 Rust 那一侧，静默降级成单窗口。 */
 async function call<T>(command: string, args: Record<string, unknown>, fallback: T): Promise<T> {
@@ -44,4 +54,6 @@ export const tauriWindows: WindowsPort = {
   focusIfOpen: (path) => call('focus_path', { path }, false),
   openFiles: async (paths) => void (await call('open_files', { paths }, null)),
   openDrafts: async (ids) => void (await call('open_drafts', { ids }, null)),
+  showView: async (view, canCompareDisk) =>
+    void (await call('show_view', { view, canCompareDisk }, null)),
 }

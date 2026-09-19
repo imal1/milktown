@@ -8,1119 +8,1389 @@
 <body>
 <x-dc>
 <helmet>
-<meta name="design_doc_mode" content="canvas">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="./image-slot.js"></script>
 <style>
   body { margin: 0; background: #E7E4DC; color: #322E28; -webkit-font-smoothing: antialiased; }
   a { color: #3E5C86; text-decoration: none; }
-  a:hover { color: #2C4468; text-decoration: underline; }
+  a:hover { color: #2C4468; }
   [contenteditable]:focus { outline: none; }
+  textarea { outline: none; }
+  @keyframes mt-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes mt-toast { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes mt-pulse { 0% { box-shadow: inset 0 0 0 2px rgba(143,122,74,0.9); } 100% { box-shadow: inset 0 0 0 2px rgba(143,122,74,0); } }
+  @keyframes mt-fade { from { opacity: 0; } to { opacity: 1; } }
 </style>
 </helmet>
 
-<div style="padding: 56px 56px 96px; font-family: 'Source Serif 4', 'Songti SC', serif; display: flex; flex-direction: column; gap: 84px;">
+<div style="min-height: 100vh; padding: 40px 32px 72px; font-family: 'Source Serif 4', 'Songti SC', serif; display: flex; flex-direction: column; align-items: center; gap: 20px;">
 
-<section style="display: flex; flex-direction: column; gap: 52px;">
-
-  <div style="display: flex; flex-direction: column; gap: 10px; max-width: 820px;">
-    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8378;">Turn 2 · Milktown · 交接单 17 决策的设计侧</div>
-    <div style="font-size: 30px; font-weight: 600; letter-spacing: -0.01em;">源码模式、查找替换，与六个补状态</div>
-    <div style="font-size: 16px; line-height: 1.65; color: #5C564C; text-wrap: pretty;">前提已改：窗口是 macOS 原生窗口（<span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px;">titleBarStyle: Overlay</span>），圆角、阴影、交通灯全归系统，应用只画交通灯右边那 34px 一条，左侧留 72px。下面八项按重要性排：<a href="#2a">2a</a> 源码模式 · <a href="#2b">2b</a> 查找替换条 · <a href="#2c">2c</a> 拖拽悬停 · <a href="#2d">2d</a> 菜单文案 · <a href="#2e">2e</a> 保存冲突 · <a href="#2f">2f</a> 重复打开 · <a href="#2g">2g</a> 草稿恢复 · <a href="#2h">2h</a> 相对路径图片。</div>
+  <div style="width: 1000px; max-width: 100%; display: flex; flex-direction: column; gap: 8px;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8378;">Milktown · 可交互定稿</div>
+    <div style="font-size: 26px; font-weight: 600; letter-spacing: -0.01em;">写作面上没有工具栏</div>
+    <div style="font-size: 15px; line-height: 1.6; color: #5C564C; text-wrap: pretty;">这一份不再是图。排版命令在上面那条系统菜单栏里，18 条都能真的改动文本；光标进到哪一行，那一行的 Markdown 标记就显出来。快捷键全部可用：⌘B 加粗 · ⌘1–⌘6 标题 · ⌥⌘Q 引用 · ⌘F 查找 · ⌘/ 只看原文 · ⌥⌘/ 排版与原文并排 · ⇧⌘/ 磁盘与当前对照 · ⌘S 保存 · ⌘O 打开。纸上的链接、代码块语言、表格、图片、公式点一下会浮出各自的控件。</div>
   </div>
 
-  <div id="2a" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">2a</span>
-      <span style="font-size: 20px; font-weight: 600;">源码模式 · ⌘/</span>
-      <span style="font-size: 14px; color: #6E675C; max-width: 620px;">等宽 15px / 1.8，纸宽与写作视图锁同一像素宽度——切过去纸边不跳，只是字换了一副面孔。</span>
+  <div style="position: relative; width: 1000px; max-width: 100%; display: flex; flex-direction: column; align-items: stretch;">
+
+    <div style="height: 26px; flex: none; display: flex; align-items: stretch; gap: 2px; padding: 0 10px; background: #DDD9D0; border-radius: 7px 7px 0 0; border-bottom: 1px solid #CFCABF;">
+      <div style="display: flex; align-items: center; padding: 0 10px 0 4px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; color: #4A443B;">Milktown</div>
+      <sc-for list="{{ menus }}" as="m" hint-placeholder-count="5">
+        <button onClick="{{ m.click }}" onMouseEnter="{{ m.enter }}" ref="{{ m.ref }}" style="border: none; background: {{ m.bg }}; color: #3A352E; font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 0 9px; border-radius: 4px; cursor: pointer;" style-hover="background:#EFEBE1">{{ m.label }}</button>
+      </sc-for>
     </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
 
-      <div data-screen-label="2a 写作视图（对照）" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
+    <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeMenu }}" style="position: fixed; inset: 0; z-index: 40;"></div>
+      <div style="position: absolute; top: 26px; left: {{ menuX }}px; z-index: 41; min-width: 236px; padding: 5px; background: #FDFCF9; border: 1px solid #E2DCCE; border-radius: 7px; box-shadow: 0 14px 34px -12px rgba(40,34,26,0.42); animation: mt-fade 90ms ease-out;">
+        <sc-for list="{{ menuItems }}" as="it" hint-placeholder-count="6">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px; height: {{ it.h }}px; padding: 0 9px; border-radius: 4px; cursor: {{ it.cursor }}; background: {{ it.bg }}; color: {{ it.color }};" style-hover="background:#F0ECE2" onClick="{{ it.click }}">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 13.5px;"><span style="width: 11px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8F7A4A;">{{ it.check }}</span>{{ it.label }}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">{{ it.key }}</span>
           </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <div style="display: flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md *</span>
-              <span style="font-size: 9px; color: #A39B8E;">▾</span>
-            </div>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 48px 40px 0;">
-          <div style="width: 535px; font-size: 18px; line-height: 1.8; color: #2E2A24;">
-            <div style="font-size: 27px; font-weight: 600; line-height: 1.32; margin-bottom: 20px; letter-spacing: -0.012em;">写作工具的一点想法</div>
-            <div style="margin-bottom: 18px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
-            <div style="padding-left: 20px; border-left: 2px solid #E2DCCE; color: #6E675C; margin-bottom: 18px;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
-            <div style="display: grid; grid-template-columns: 1fr 100px; font-size: 15px;">
-              <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E7E2D6;">操作</div>
-              <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E7E2D6;">键</div>
-              <div style="padding: 8px 0; border-bottom: 1px solid #F2EEE4;">保存</div>
-              <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 14px; border-bottom: 1px solid #F2EEE4;">⌘S</div>
-            </div>
-          </div>
-        </div>
-        <div style="position: absolute; left: 13px; bottom: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #C2BBAE;">所见即所得 · 现状</div>
+        </sc-for>
       </div>
-
-      <div data-screen-label="2a 源码模式" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <div style="display: flex; align-items: center; gap: 7px; padding: 2px 8px; border-radius: 4px;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md *</span>
-              <span style="font-size: 9px; color: #A39B8E;">▾</span>
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: #5C564C; background: #ECE7DA; border-radius: 3px; padding: 1.5px 5px;">原文</span>
-            </div>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 34px 40px 0;">
-          <div style="width: 535px; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: flex-end; padding-bottom: 7px; border-bottom: 1px solid #EEEAE0; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #A39B8E;">⌘S 按原文保存，不做规范化 · ⌘/ 返回</div>
-            <div style="padding-top: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 15px; line-height: 1.8; color: #2E2A24; white-space: pre-wrap;"># 写作工具的一点想法
-
-工具栏上的每个按钮都在偷高度。四个操作都有快捷键，
-那条横栏留在屏幕上的唯一理由，是让我确认文件还在。
-
-&gt; 一个自用的编辑器，验收标准只有一条：作者今天
-&gt; 愿意用它写东西吗。
-
-| 操作 | 键 |
-| ---- | --- |
-| 保存 | ⌘S |</div>
-          </div>
-        </div>
-        <div style="position: absolute; left: 13px; bottom: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #C2BBAE;">纯 textarea · 无行号 · 无语法着色</div>
-      </div>
-
-      <div style="width: 380px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">定稿参数</div>
-        <div style="display: flex; flex-direction: column; gap: 11px; font-size: 14.5px; line-height: 1.55; color: #4A443B;">
-          <div><span style="font-weight: 600;">字体</span>　IBM Plex Mono 15px / 1.8。比正文 18px 小一档、比代码块 13.5px 大一档，落在两者之间，读起来仍是「文章」不是「配置文件」。</div>
-          <div><span style="font-weight: 600;">纸宽</span>　与写作视图锁同一像素宽（≈535px），不按 ch 折算——按 ch 算等宽会突然宽出一截，切换时纸边会跳。</div>
-          <div><span style="font-weight: 600;">行号</span>　不要。双页视图那一票的行号是另一回事。</div>
-          <div><span style="font-weight: 600;">指示</span>　两处：标题栏文件名后的「原文」小徽章（<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">#ECE7DA</span> 底），加纸张顶端一条发丝线 + 右对齐小字点明保存差异。徽章负责「我在哪」，小字负责「这有什么后果」。</div>
-          <div><span style="font-weight: 600;">过渡</span>　纸张轻微上移淡入：新视图 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">translateY 6px → 0 / opacity 0 → 1，140ms ease-out</span>；旧视图 70ms 淡出。标题栏和徽章不参与动画。</div>
-        </div>
-      </div>
-    </div>
-    <sc-if value="{{ showMotion }}" hint-placeholder-val="{{ true }}">
-    <div style="display: flex; gap: 14px; align-items: stretch; margin-top: 6px;">
-      <div style="width: 250px; height: 150px; border-radius: 7px; background: #FDFCF9; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); overflow: hidden; display: flex; flex-direction: column;">
-        <div style="height: 18px; border-bottom: 1px solid #EEEAE0;"></div>
-        <div style="flex: 1; padding: 14px 26px; font-size: 11px; line-height: 1.7; color: #2E2A24;">
-          <div style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">写作工具的一点想法</div>
-          <div>工具栏上的每个按钮都在偷高度。</div>
-        </div>
-        <div style="padding: 6px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #A39B8E;">0ms · ⌘/ 按下</div>
-      </div>
-      <div style="width: 250px; height: 150px; border-radius: 7px; background: #FDFCF9; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); overflow: hidden; display: flex; flex-direction: column;">
-        <div style="height: 18px; border-bottom: 1px solid #EEEAE0;"></div>
-        <div style="flex: 1; padding: 14px 26px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.7; color: #2E2A24; opacity: 0.45; transform: translateY(4px);">
-          <div># 写作工具的一点想法</div>
-          <div>工具栏上的每个按钮都在偷高度。</div>
-        </div>
-        <div style="padding: 6px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #A39B8E;">70ms · 上移中</div>
-      </div>
-      <div style="width: 250px; height: 150px; border-radius: 7px; background: #FDFCF9; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); overflow: hidden; display: flex; flex-direction: column;">
-        <div style="height: 18px; border-bottom: 1px solid #EEEAE0;"></div>
-        <div style="flex: 1; padding: 14px 26px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.7; color: #2E2A24;">
-          <div># 写作工具的一点想法</div>
-          <div>工具栏上的每个按钮都在偷高度。</div>
-        </div>
-        <div style="padding: 6px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #A39B8E;">140ms · 落定</div>
-      </div>
-    </div>
     </sc-if>
-  </div>
 
-  <div id="2b" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">2b</span>
-      <span style="font-size: 20px; font-weight: 600;">查找替换条 · ⌘F</span>
-      <span style="font-size: 14px; color: #6E675C; max-width: 620px;">贴在纸张正上方、随纸宽对齐，不通栏——它属于这张纸，不属于窗口。写作视图按 ⌘F 会先切进源码模式再弹出。</span>
-    </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+    <div onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="height: 660px; border-radius: 0 0 11px 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
 
-      <div data-screen-label="2b 查找中" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <div style="display: flex; align-items: center; gap: 7px; padding: 2px 8px; border-radius: 4px;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md *</span>
+      <div style="height: 34px; flex: none; display: flex; align-items: stretch; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0; user-select: none;">
+        <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
+        </div>
+        <div style="flex: 1; display: flex; align-items: stretch; justify-content: center; gap: 8px;">
+          <button onClick="{{ toggleRecent }}" style="display: flex; align-items: center; gap: 6px; height: 100%; min-width: 96px; justify-content: center; padding: 0 10px; border: none; background: transparent; cursor: pointer; font-family: inherit;">
+            <span style="display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 5px; background: {{ titleBg }}; box-shadow: {{ titleRing }};">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">{{ fileName }}</span>
+              <sc-if value="{{ dirtyDot }}" hint-placeholder-val="{{ false }}"><span style="width: 5px; height: 5px; border-radius: 50%; background: #8F7A4A;"></span></sc-if>
+              <sc-if value="{{ dirtyText }}" hint-placeholder-val="{{ false }}"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8F7A4A;">{{ dirtyLabel }}</span></sc-if>
               <span style="font-size: 9px; color: #A39B8E;">▾</span>
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: #5C564C; background: #ECE7DA; border-radius: 3px; padding: 1.5px 5px;">原文</span>
-            </div>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 22px 40px 0;">
-          <div style="width: 535px; display: flex; flex-direction: column;">
-
-            <div style="display: flex; flex-direction: column; gap: 9px; padding: 12px 14px 11px; background: #FFFEFB; border: 1px solid rgba(40,34,26,0.10); border-radius: 7px; box-shadow: 0 10px 26px -16px rgba(40,34,26,0.45);">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="width: 34px; flex: none; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: #A39B8E;">查找</span>
-                <div style="flex: 1; display: flex; align-items: center; border-bottom: 1px solid #E2DCCE; padding-bottom: 3px;">
-                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #2E2A24;">横栏</span>
-                  <span style="width: 1px; height: 15px; background: #2E2A24; margin-left: 1px;"></span>
-                </div>
-                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8378; white-space: nowrap;">3 / 12</span>
-                <div style="display: flex; gap: 2px;">
-                  <span style="width: 20px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 9px; color: #5C564C; background: #F4F1E8;">↑</span>
-                  <span style="width: 20px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 9px; color: #5C564C; background: #F4F1E8;">↓</span>
-                </div>
-              </div>
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="width: 34px; flex: none; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: #A39B8E;">替换</span>
-                <div style="flex: 1; display: flex; align-items: center; border-bottom: 1px solid #EEEAE0; padding-bottom: 3px;">
-                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #2E2A24;">标题栏</span>
-                </div>
-                <div style="display: flex; gap: 6px;">
-                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #4A443B; padding: 3px 9px; border: 1px solid #E7E2D6; border-radius: 5px;">替换</span>
-                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #4A443B; padding: 3px 9px; border: 1px solid #E7E2D6; border-radius: 5px;">全部</span>
-                </div>
-              </div>
-              <div style="display: flex; justify-content: flex-end; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #C2BBAE;">⏎ 下一个 · ⇧⏎ 上一个 · Esc 关闭</div>
-            </div>
-
-            <div style="padding-top: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 15px; line-height: 1.8; color: #2E2A24;">
-              <div># 写作工具的一点想法</div>
-              <div style="height: 1.8em;"></div>
-              <div>工具栏上的每个按钮都在偷高度。四个操作都有</div>
-              <div>快捷键，那条<span style="background: #D8E0D0; border-radius: 2px;">横栏</span>留在屏幕上的唯一理由，</div>
-              <div>是让我确认文件还在。</div>
-              <div style="height: 1.8em;"></div>
-              <div>&gt; 去掉<span style="background: #F0ECE2; border-radius: 2px;">横栏</span>之后，纸就是全部。那条<span style="background: #F0ECE2; border-radius: 2px;">横栏</span></div>
-              <div>&gt; 只在你需要它时出现。</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="width: 380px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">定稿参数</div>
-        <div style="display: flex; flex-direction: column; gap: 11px; font-size: 14.5px; line-height: 1.55; color: #4A443B;">
-          <div><span style="font-weight: 600;">位置</span>　纸张上方 22px 处的浮卡，左右与纸对齐（535px）。不通栏，不吸顶——通栏会让它看起来像工具栏，而这个应用不要工具栏。</div>
-          <div><span style="font-weight: 600;">字段</span>　两行，标签在左（等宽 10px），输入是发丝下划线不是输入框。查找行获得焦点时下划线转深（<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">#E2DCCE</span>）。</div>
-          <div><span style="font-weight: 600;">计数</span>　<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">3 / 12</span>，紧跟查找字段右侧；无匹配时显示 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">0 / 0</span> 并把计数与下划线一起转灰，不弹任何提示。</div>
-          <div><span style="font-weight: 600;">高亮</span>　全部匹配 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">#F0ECE2</span>（沿用 --highlight），当前项 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">#D8E0D0</span>（新增 --highlight-active，苔绿，同一明度层但换色相，扫一眼就能分出哪个是当前）。</div>
-          <div><span style="font-weight: 600;">进入</span>　写作视图按 ⌘F：先走 2a 那套上移淡入切到源码模式，落定后查找条再淡入（错开 60ms），不要两件事同时动。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="2c" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">2c</span>
-      <span style="font-size: 20px; font-weight: 600;">拖拽文件悬停态</span>
-      <span style="font-size: 14px; color: #6E675C; max-width: 620px;">整页覆盖一层半透明纸色，正文退到后面。脏文档时多一行小字预告松手之后会先问保存。</span>
-    </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
-
-      <div data-screen-label="2c 悬停 · 干净" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md ▾</span>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 48px 40px 0;">
-          <div style="width: 535px; font-size: 18px; line-height: 1.8; color: #2E2A24;">
-            <div style="font-size: 27px; font-weight: 600; line-height: 1.32; margin-bottom: 20px; letter-spacing: -0.012em;">写作工具的一点想法</div>
-            <div style="margin-bottom: 18px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
-            <div style="padding-left: 20px; border-left: 2px solid #E2DCCE; color: #6E675C;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
-          </div>
-        </div>
-        <div style="position: absolute; inset: 0; background: rgba(253,252,249,0.88); display: flex; align-items: center; justify-content: center;">
-          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #4A443B;">在此打开 <span style="color: #2E2A24; background: #F0ECE2; border-radius: 3px; padding: 1px 5px;">草稿-0904.md</span></div>
-        </div>
-      </div>
-
-      <div data-screen-label="2c 悬停 · 脏文档" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md * ▾</span>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 48px 40px 0;">
-          <div style="width: 535px; font-size: 18px; line-height: 1.8; color: #2E2A24;">
-            <div style="font-size: 27px; font-weight: 600; line-height: 1.32; margin-bottom: 20px; letter-spacing: -0.012em;">写作工具的一点想法</div>
-            <div style="margin-bottom: 18px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
-          </div>
-        </div>
-        <div style="position: absolute; inset: 0; background: rgba(253,252,249,0.88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
-          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #4A443B;">在此打开 <span style="color: #2E2A24; background: #F0ECE2; border-radius: 3px; padding: 1px 5px;">草稿-0904.md</span></div>
-          <sc-if value="{{ dropPreview }}" hint-placeholder-val="{{ true }}">
-          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">2026-09.md 有未保存修改，松手后先问你</div>
+            </span>
+          </button>
+          <sc-if value="{{ source }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; align-items: center;"><span style="padding: 1px 6px; border-radius: 3px; background: #ECE7DA; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #5C564C;">{{ badgeText }}</span></div>
           </sc-if>
         </div>
-      </div>
-
-      <div style="width: 380px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">定稿参数</div>
-        <div style="display: flex; flex-direction: column; gap: 11px; font-size: 14.5px; line-height: 1.55; color: #4A443B;">
-          <div><span style="font-weight: 600;">覆盖层</span>　<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">rgba(253,252,249,0.88)</span>，铺满窗口含标题栏，无描边无虚线框。100ms 淡入，离开立即消失。</div>
-          <div><span style="font-weight: 600;">文案</span>　「在此打开 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">文件名.md</span>」，文件名带 --highlight 底色——它是从系统那边读到的真名，读得出名字就说明这个文件确实能打开。</div>
-          <div><span style="font-weight: 600;">多文件</span>　拖进多个时文案变「只能打开一个 · 松手取第一个 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">a.md</span>」。非 Markdown 文件：「不认识 .png」，覆盖层文字转 --muted，松手无动作。</div>
-          <div><span style="font-weight: 600;">脏预告</span>　第二行 11px --muted 小字。预告只说会问，不替用户做决定；松手后照常走 ConfirmLayer。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="2d" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">2d</span>
-      <span style="font-size: 20px; font-weight: 600;">菜单栏文案表</span>
-      <span style="font-size: 14px; color: #6E675C; max-width: 620px;">系统绘制，设计只钉文案与分组。分隔线用 —— 标出，快捷键沿用 README 那张表。</span>
-    </div>
-    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-
-      <div style="width: 258px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); overflow: hidden;">
-        <div style="padding: 11px 16px; border-bottom: 1px solid #EEEAE0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #5C564C;">milktown</div>
-        <div style="padding: 8px 0;">
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>关于 milktown</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;"></span></div>
-          <div style="height: 1px; background: #F2EEE4; margin: 6px 16px;"></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>退出 milktown</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⌘Q</span></div>
-        </div>
-      </div>
-
-      <div style="width: 258px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); overflow: hidden;">
-        <div style="padding: 11px 16px; border-bottom: 1px solid #EEEAE0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #5C564C;">文件</div>
-        <div style="padding: 8px 0;">
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>新建</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⌘N</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>打开…</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⇧⌘O</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>最近文件</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⌘O　▸</span></div>
-          <div style="height: 1px; background: #F2EEE4; margin: 6px 16px;"></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>保存</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⌘S</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>另存为…</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⇧⌘S</span></div>
-          <div style="height: 1px; background: #F2EEE4; margin: 6px 16px;"></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>关闭窗口</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⌘W</span></div>
-        </div>
-      </div>
-
-      <div style="width: 258px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); overflow: hidden;">
-        <div style="padding: 11px 16px; border-bottom: 1px solid #EEEAE0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #5C564C;">编辑</div>
-        <div style="padding: 8px 0;">
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px; color: #8A8378;"><span>撤销</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #C2BBAE;">⌘Z</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px; color: #8A8378;"><span>重做</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #C2BBAE;">⇧⌘Z</span></div>
-          <div style="height: 1px; background: #F2EEE4; margin: 6px 16px;"></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px; color: #8A8378;"><span>剪切</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #C2BBAE;">⌘X</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px; color: #8A8378;"><span>复制</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #C2BBAE;">⌘C</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px; color: #8A8378;"><span>粘贴</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #C2BBAE;">⌘V</span></div>
-          <div style="height: 1px; background: #F2EEE4; margin: 6px 16px;"></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>查找与替换…</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⌘F</span></div>
-          <div style="padding: 4px 16px 0; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #C2BBAE;">灰的五项＝系统预置，文案不归我们定</div>
-        </div>
-      </div>
-
-      <div style="width: 258px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); overflow: hidden;">
-        <div style="padding: 11px 16px; border-bottom: 1px solid #EEEAE0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #5C564C;">视图</div>
-        <div style="padding: 8px 0;">
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>✓　源码模式</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⌘/</span></div>
-          <div style="display: flex; justify-content: space-between; padding: 6px 16px; font-size: 14.5px;"><span>　　版本历史</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">⇧⌘H</span></div>
-          <div style="padding: 8px 16px 0; font-size: 13px; line-height: 1.5; color: #8A8378;">源码模式做成带勾的开关项，勾即是第三处模式指示——菜单是唯一能让人「发现」⌘/ 存在的地方。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="2e" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">2e</span>
-      <span style="font-size: 20px; font-weight: 600;">保存冲突确认</span>
-      <span style="font-size: 14px; color: #6E675C; max-width: 620px;">复用 ConfirmLayer 的壳，换问句与三个键位。最安全的选项拿 ⏎，能毁东西的那个要按组合键。</span>
-    </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
-
-      <div data-screen-label="2e 冲突确认" style="width: 800px; height: 440px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md * ▾</span>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 40px 40px 0;">
-          <div style="width: 535px; font-size: 18px; line-height: 1.8; color: #2E2A24;">
-            <div style="font-size: 27px; font-weight: 600; line-height: 1.32; margin-bottom: 20px; letter-spacing: -0.012em;">写作工具的一点想法</div>
-            <div>工具栏上的每个按钮都在偷高度。四个操作都有快捷键。</div>
-          </div>
-        </div>
-        <div style="position: absolute; inset: 0; background: rgba(253,252,249,0.6); display: flex; align-items: center; justify-content: center;">
-          <div style="width: 380px; padding: 18px 18px 14px; background: #FFFEFB; border: 1px solid rgba(40,34,26,0.10); border-radius: 8px; box-shadow: 0 18px 40px -14px rgba(40,34,26,0.4);">
-            <p style="margin: 0 0 6px; font-size: 15px; line-height: 1.6; color: #2E2A24;">你打开它之后，<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13.5px;">2026-09.md</span> 在磁盘上被别的程序改过了。</p>
-            <p style="margin: 0 0 16px; font-size: 13px; line-height: 1.6; color: #8A8378;">磁盘上那份改于 14:02，你手上这份基于 11:20。覆盖会丢掉那边的改动。</p>
-            <div style="display: flex; justify-content: flex-end; gap: 8px;">
-              <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid #E2DCCE; border-radius: 5px; background: #F0ECE2; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;">另存为… <span style="font-size: 10px; color: #8A8378;">⏎</span></span>
-              <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid #EEEAE0; border-radius: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;">覆盖 <span style="font-size: 10px; color: #A39B8E;">⌘D</span></span>
-              <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid #EEEAE0; border-radius: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;">放弃保存 <span style="font-size: 10px; color: #A39B8E;">Esc</span></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="width: 380px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">定稿参数</div>
-        <div style="display: flex; flex-direction: column; gap: 11px; font-size: 14.5px; line-height: 1.55; color: #4A443B;">
-          <div><span style="font-weight: 600;">键位</span>　⏎ = 另存为…（默认项，谁都不损失）；⌘D = 覆盖（沿用「破坏性走 ⌘D」的既有肌肉记忆）；Esc = 放弃保存，回编辑器，文档仍是脏的。</div>
-          <div><span style="font-weight: 600;">问句</span>　主句点明因果顺序：「你打开它之后 …… 被别的程序改过了」。副句给两个时间戳，这是用户判断该覆盖还是该另存的唯一依据——只说「文件已被修改」等于让人猜。</div>
-          <div><span style="font-weight: 600;">壳</span>　与现有 ConfirmLayer 完全一致，只把宽度 340 → 380px 容下两行问句，多一段 13px --muted 副句。按钮顺序照旧：主项在最左。</div>
-          <div><span style="font-weight: 600;">另存为之后</span>　新路径成为当前文件，标题栏改名，磁盘上那份原封不动。不再追问。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="2f" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">2f</span>
-      <span style="font-size: 20px; font-weight: 600;">重复打开同一文件</span>
-    </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap; align-items: stretch;">
-      <div style="width: 560px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 24px 26px; display: flex; flex-direction: column; gap: 14px;">
-        <div style="font-size: 17px; font-weight: 600;">静默聚焦，什么都不说。</div>
-        <div style="font-size: 15px; line-height: 1.7; color: #4A443B; text-wrap: pretty;">窗口跳到眼前本身就是反馈，再加一条 toast 是在解释用户已经看见的事。唯一的例外要处理：那个窗口如果被最小化了，聚焦不会有可见变化——这种情况下取消最小化并轻微抖动一下窗口（macOS 的 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13.5px;">requestUserAttention</span>），仍然不出 toast。</div>
-        <div style="font-size: 15px; line-height: 1.7; color: #4A443B;">如果那个已开着的窗口是脏的，也不做任何提示——用户看到标题栏上的 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13.5px;">*</span> 就知道。</div>
-      </div>
-      <div style="width: 380px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 22px 24px; display: flex; flex-direction: column; gap: 12px;">
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">顺带钉死</div>
-        <div style="font-size: 14.5px; line-height: 1.6; color: #4A443B;">多窗口下「最近文件」是全局共享一份的：在 A 窗口打开的文件，B 窗口的 ⌘O 面板里也看得到，并且带一个极淡的 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #8A8378;">开着</span> 标记（--muted 10px，右对齐在时间前面），点它＝聚焦那个窗口而不是新开。</div>
-      </div>
-    </div>
-  </div>
-
-  <div id="2g" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">2g</span>
-      <span style="font-size: 20px; font-weight: 600;">草稿恢复</span>
-      <span style="font-size: 14px; color: #6E675C; max-width: 620px;">内容直接装进编辑器，配一条停 6 秒的 toast。文档进来就是脏的，标题栏带 *。</span>
-    </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
-
-      <div data-screen-label="2g 草稿恢复" style="width: 800px; height: 480px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">未命名 * ▾</span>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">86</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 48px 40px 0;">
-          <div style="width: 535px; font-size: 18px; line-height: 1.8; color: #2E2A24;">
-            <div style="font-size: 27px; font-weight: 600; line-height: 1.32; margin-bottom: 20px; letter-spacing: -0.012em;">半夜想到的三件事</div>
-            <div>第一件是关于那条横栏的。昨天关窗时没存，本来以为已经没了。</div>
-          </div>
-        </div>
-        <div style="position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); padding: 7px 14px; border-radius: 6px; background: rgba(46,42,36,0.9); color: #F7F4EC; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; white-space: nowrap;">已恢复上次未保存的草稿 · ⌘S 存成文件</div>
-      </div>
-
-      <div style="width: 380px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">定稿参数</div>
-        <div style="display: flex; flex-direction: column; gap: 11px; font-size: 14.5px; line-height: 1.55; color: #4A443B;">
-          <div><span style="font-weight: 600;">时长</span>　6 秒（「已保存」仍是 1.8 秒）。这条错过就不知道手上这份是恢复来的，值得占更久；但仍自动消失，不给关闭按钮。</div>
-          <div><span style="font-weight: 600;">文案</span>　「已恢复上次未保存的草稿 · ⌘S 存成文件」。后半句是这条 toast 存在的理由：草稿仍未落盘，用户得知道下一步按什么。</div>
-          <div><span style="font-weight: 600;">互斥</span>　有草稿＝编辑器里有内容＝空状态（最近文件列表）不出现。双击文件启动时文件优先，草稿留着不动，也不出 toast——留到下次真正空手启动时再说。</div>
-          <div><span style="font-weight: 600;">样式</span>　沿用现有 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">.toast</span>，不加图标不换色。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="2h" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">2h</span>
-      <span style="font-size: 20px; font-weight: 600;">相对路径图片</span>
-      <span style="font-size: 14px; color: #6E675C; max-width: 620px;">顶到纸宽、无边框、上下各 24px。路径写错时不渲染，原样留着 Markdown 那行。</span>
-    </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
-
-      <div data-screen-label="2h 图片正常与失败" style="width: 800px; height: 620px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">桌面 setup.md ▾</span>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">312</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 44px 40px 0;">
-          <div style="width: 535px; font-size: 18px; line-height: 1.8; color: #2E2A24;">
-            <div style="margin-bottom: 0;">上个月换的桌面，纸和键盘各占一半。</div>
-            <div style="margin: 24px 0;">
-              <image-slot id="milktown-desk" shape="rounded" radius="2" style="display: block; width: 100%; height: 200px;" placeholder="桌面照片 · ./img/desk.png"></image-slot>
-            </div>
-            <div>下面这张的路径写错了，正文里应该原样留着：</div>
-            <div style="margin: 24px 0; font-family: 'IBM Plex Mono', monospace; font-size: 15.3px; color: #A39B8E;">![](./img/desk-2.png)</div>
-            <div>——路径改对了它自己会出现。</div>
-          </div>
-        </div>
-      </div>
-
-      <div style="width: 380px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">定稿参数</div>
-        <div style="display: flex; flex-direction: column; gap: 11px; font-size: 14.5px; line-height: 1.55; color: #4A443B;">
-          <div><span style="font-weight: 600;">尺寸</span>　<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">max-width: 100%</span> 顶到纸宽，小图按原尺寸左对齐不放大。无边框、无投影，圆角 2px——纸上贴的是照片，不是卡片。</div>
-          <div><span style="font-weight: 600;">留白</span>　上下各 24px（比段间距 18px 大一档，让图自成一段）。有 alt 文字时下方 8px 处 13px --muted 居左，没有就不留位置。</div>
-          <div><span style="font-weight: 600;">失败态</span>　不渲染，原样显示 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">![](./img/a.png)</span>，等宽 0.85em、--muted 色。不画破图框、不报红——写错路径是写作中的常态，不是错误。原文留在那里，光标点进去就能改。</div>
-          <div><span style="font-weight: 600;">加载中</span>　本地文件读取是毫秒级，不做骨架屏。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div style="max-width: 820px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); padding: 24px 26px; display: flex; flex-direction: column; gap: 14px;">
-    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">给 styles.css 的增量</div>
-    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; line-height: 2; color: #4A443B;">--highlight-active: #d8e0d0;　/* 查找当前匹配项 */<br>--source-size: 15px;　--source-leading: 1.8;<br>--scrim-drop: rgba(253, 252, 249, 0.88);<br>--toast-long: 6000ms;　/* 草稿恢复；--toast 仍为 1800ms */</div>
-    <div style="font-size: 14.5px; line-height: 1.6; color: #5C564C;">其余全部复用既有变量。没有新增字体、没有新增圆角档位、没有新增阴影。</div>
-  </div>
-
-</section>
-
-<section style="display: flex; flex-direction: column; gap: 26px;">
-  <div id="1d" style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
-    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">1d</span>
-    <span style="font-size: 20px; font-weight: 600;">1c 定稿的可交互原型</span>
-    <span style="font-size: 14px; color: #6E675C; max-width: 620px;">在窗口里直接写。⌘S 保存 · ⌘N 新建 · ⌘O 最近文件 · ⌘1–4 直开 · Esc 关闭。源码模式与查找条尚未接进原型，先看 <a href="#2a">2a</a> / <a href="#2b">2b</a> 的静态稿。</span>
-  </div>
-  <div style="display: flex; flex-direction: column; gap: 22px; align-items: flex-start;">
-<div style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; position: relative; display: flex; flex-direction: column; flex: none; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10);" data-screen-label="1c 原型窗口">
-
-    <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-      <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-      </div>
-      <div style="flex: 1; display: flex; justify-content: center;">
-        <button onClick="{{ toggleRecent }}" style="{{ titleBtn }}">
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">{{ fileNameStar }}</span>
-          <span style="font-size: 9px; color: #A39B8E;">▾</span>
+        <button onClick="{{ toggleWords }}" style="display: flex; align-items: center; height: 100%; padding: 0 4px; border: none; background: transparent; cursor: pointer; font-family: 'IBM Plex Mono', monospace;">
+          <span style="padding: 3px 6px; border-radius: 5px; background: {{ wordsBg }}; font-size: 11px; color: #6E675C;">{{ wordsLabel }}</span>
         </button>
       </div>
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">{{ words }}</span>
-    </div>
 
-    <div style="flex: 1; min-height: 0; overflow: auto; display: flex; justify-content: center; padding: 48px 40px 0;">
-      <div style="{{ sheetStyle }}">
-        <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
-          <div style="display: flex; flex-direction: column; padding-bottom: 26px;">
-            <div style="display: flex; align-items: center; gap: 2px; margin-bottom: 34px;">
-              <span style="font-size: 27px; font-weight: 600; color: #C9C2B4;">开始写</span>
-              <span style="width: 2px; height: 29px; background: #2E2A24;"></span>
-            </div>
-            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #A39B8E; margin-bottom: 12px;">最近文件</div>
-            <div style="display: flex; flex-direction: column; border-top: 1px solid #EEEAE0;">
-              <sc-for list="{{ recent }}" as="f" hint-placeholder-count="4">
-                <button onClick="{{ f.open }}" style="{{ f.rowStyle }}">
-                  <span style="font-size: 16px;">{{ f.name }}</span>
-                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">{{ f.meta }}</span>
-                </button>
-              </sc-for>
+      <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative;">
+
+        <sc-if value="{{ findOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="flex: none; display: flex; justify-content: center; padding: 12px 0 0;">
+            <div style="width: 535px; display: flex; align-items: center; gap: 8px; padding: 7px 9px; background: #FDFCF9; border: 1px solid #E2DCCE; border-radius: 7px; box-shadow: 0 6px 20px -8px rgba(40,34,26,0.28);">
+              <input value="{{ findText }}" onChange="{{ onFind }}" ref="{{ findRef }}" placeholder="查找" style="flex: 1; min-width: 0; border: none; background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #2E2A24;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E675C; white-space: nowrap;">{{ findCount }}</span>
+              <div style="width: 1px; height: 16px; background: #EEEAE0;"></div>
+              <input value="{{ replaceText }}" onChange="{{ onReplace }}" placeholder="替换为" style="flex: 1; min-width: 0; border: none; background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #2E2A24;">
+              <button onClick="{{ doReplaceAll }}" style="border: 1px solid #E2DCCE; background: transparent; border-radius: 5px; padding: 3px 9px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #4A443B; cursor: pointer;" style-hover="background:#F0ECE2">全部替换</button>
+              <button onClick="{{ closeFind }}" style="border: none; background: transparent; padding: 2px 4px; font-size: 13px; color: #A39B8E; cursor: pointer;" style-hover="color:#5C564C">✕</button>
             </div>
           </div>
         </sc-if>
-        <div contentEditable="{{ editable }}" suppressContentEditableWarning="{{ true }}" onInput="{{ onInput }}" ref="{{ docRef }}" style="{{ proseStyle }}"></div>
-      </div>
-    </div>
 
-    <sc-if value="{{ showRecent }}" hint-placeholder-val="{{ false }}">
-      <div onClick="{{ closeRecent }}" style="position: absolute; inset: 0; background: rgba(253,252,249,0.45); z-index: 8;"></div>
-      <div style="position: absolute; top: 36px; left: 50%; transform: translateX(-50%); width: 360px; z-index: 9; background: #FFFEFB; border: 1px solid rgba(40,34,26,0.10); border-radius: 7px; box-shadow: 0 14px 34px -12px rgba(40,34,26,0.35); overflow: hidden;">
-        <div style="padding: 9px 14px 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #A39B8E;">最近文件</div>
-        <div style="padding: 5px;">
-          <sc-for list="{{ recent }}" as="f" hint-placeholder-count="4">
-            <button onClick="{{ f.open }}" onMouseEnter="{{ f.hover }}" style="{{ f.panelRowStyle }}">
-              <span style="{{ f.panelNameStyle }}">{{ f.name }}</span>
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">{{ f.meta }}</span>
-            </button>
-          </sc-for>
-        </div>
-        <div style="padding: 9px 15px; border-top: 1px solid #F2EEE4; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F;">
-          <span>↵ 打开 · ↑↓ 选择</span><span>⌘O 其他…</span>
-        </div>
-      </div>
-    </sc-if>
-
-    <sc-if value="{{ showToast }}" hint-placeholder-val="{{ false }}">
-      <div style="position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 10; padding: 7px 14px; border-radius: 6px; background: rgba(46,42,36,0.90); color: #F7F4EC; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; white-space: nowrap;">{{ toastText }}</div>
-    </sc-if>
-  </div>
-
-  <div style="width: 800px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8378;">
-    <span>点文件名展开最近文件 · 脏状态沿用 *</span>
-    <span>行宽 {{ measure }}ch · 正文 {{ bodySize }}px</span>
-  </div>
-  </div>
-</section>
-
-<section style="display: flex; flex-direction: column; gap: 44px;">
-  <div style="display: flex; flex-direction: column; gap: 10px; max-width: 760px;">
-    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8378;">Turn 1 · Milktown · 编辑器之外的那一圈</div>
-    <div style="font-size: 30px; font-weight: 600; letter-spacing: -0.01em;">三套 paper × otty 方向</div>
-    <div style="font-size: 16px; line-height: 1.65; color: #5C564C; text-wrap: pretty;">共同前提（已按提交 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px;">4428ec9</span> / <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px;">834fdd2</span> 修正）：<strong style="font-weight: 600;">macOS 原生窗口</strong>（<span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px;">titleBarStyle: Overlay + hiddenTitle</span>）—— 圆角、阴影、交通灯、双击标题栏放大全归系统，应用只画交通灯右边那 34px 一条，左侧硬留 72px 灯位，整条是拖拽区；单文档、无文件树无标签页。三套的差异在于「纸」被推到多远，以及那一条 chrome 到底留不留。参考 <a href="#1a">1a</a> / <a href="#1b">1b</a> / <a href="#1c">1c</a>（<strong style="font-weight: 600;">1c 已定稿</strong>，1a / 1b 存档，其窗口形态未按上述修正重画），下面每套三屏：写作中、空状态、最近文件打开中。新增画板见「Milktown 源码模式与新状态」。</div>
-  </div>
-
-  <div id="1a" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">1a</span>
-      <span style="font-size: 20px; font-weight: 600;">整页 · 桌面上浮着一张纸</span>
-      <span style="font-size: 14px; color: #6E675C;">纸有边界、有投影，chrome 只剩标题栏。最像「拿起一页纸写」，代价是写作区变窄。</span>
-    </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
-
-      <div data-screen-label="1a 写作中" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #D9D5CB; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column;">
-        <div style="height: 40px; flex: none; display: flex; align-items: center; padding: 0 14px; gap: 12px; background: #D2CDC2; border-bottom: 1px solid rgba(40,34,26,0.09);">
-          <div style="display: flex; gap: 8px;">
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4796B;"></div>
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4A96B;"></div>
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #8AA57C;"></div>
-          </div>
-          <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;">
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #4A443B;">写作工具的一点想法.md</span>
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: #B5893F;" title="脏"></span>
-          </div>
-          <div style="width: 46px;"></div>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 26px 0 0;">
-          <div style="width: 620px; background: #FBFAF5; border-radius: 3px 3px 0 0; box-shadow: 0 -1px 0 rgba(40,34,26,0.06), 0 10px 30px -12px rgba(40,34,26,0.30); padding: 44px 62px 0; overflow: hidden;">
-            <div style="--measure: 62ch; --body: 17px;">
-              <div style="max-width: var(--measure); font-size: var(--body); line-height: 1.72; color: #322E28;">
-                <div style="font-size: 26px; font-weight: 600; line-height: 1.3; margin-bottom: 14px; letter-spacing: -0.01em;">写作工具的一点想法</div>
-                <div style="margin-bottom: 14px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
-                <div style="border-left: 2px solid #C9C3B6; padding-left: 16px; color: #6E675C; font-style: italic; margin-bottom: 14px;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
-                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.6; background: #F1EEE5; border: 1px solid rgba(40,34,26,0.07); border-radius: 5px; padding: 12px 14px; color: #4A443B; margin-bottom: 14px;">$ milktown ~/notes/2026-09.md</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; font-size: 14px; border-top: 1px solid #DDD8CC;">
-                  <div style="padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8A8378; border-bottom: 1px solid #DDD8CC;">操作</div>
-                  <div style="padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8A8378; border-bottom: 1px solid #DDD8CC;">快捷键</div>
-                  <div style="padding: 7px 0; border-bottom: 1px solid #EAE6DC;">保存</div>
-                  <div style="padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px; border-bottom: 1px solid #EAE6DC;">⌘S</div>
-                  <div style="padding: 7px 0;">打开</div>
-                  <div style="padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">⌘O</div>
+        <sc-if value="{{ diffView }}" hint-placeholder-val="{{ false }}">
+          <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; animation: mt-rise 140ms ease-out;">
+            <div style="flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; padding: 12px 20px 10px; border-bottom: 1px solid #EEEAE0;">
+              <div style="display: flex; align-items: baseline; gap: 10px; min-width: 0;">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #3A352E;">{{ diskLabel }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E675C;">磁盘上的</span>
+              </div>
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0;">
+                <div style="display: flex; align-items: baseline; gap: 10px;">
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #3A352E;">当前</span>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E675C;">{{ diffTally }}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <button onClick="{{ prevHunk }}" style="border: 1px solid #E2DCCE; background: transparent; border-radius: 5px; width: 24px; height: 21px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #4A443B; cursor: pointer;" style-hover="background:#F0ECE2">↑</button>
+                  <button onClick="{{ nextHunk }}" style="border: 1px solid #E2DCCE; background: transparent; border-radius: 5px; width: 24px; height: 21px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #4A443B; cursor: pointer;" style-hover="background:#F0ECE2">↓</button>
                 </div>
               </div>
             </div>
+            <div ref="{{ diffScrollRef }}" style="flex: 1; min-height: 0; overflow: auto; padding: 8px 20px 24px;">{{ diffEl }}</div>
+            <div style="flex: none; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 20px; border-top: 1px solid #EEEAE0;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E675C;">↑↓ 跳到上一处 / 下一处改动 · Esc 回写作 · 只读，改动都在右边那份里</span>
+              <button onClick="{{ save }}" style="border: 1px solid #C7BFAC; background: #EFEADC; border-radius: 6px; padding: 4px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #3A352E; cursor: pointer;" style-hover="background:#E9E3D2">写回磁盘 ⌘S</button>
+            </div>
           </div>
-        </div>
-      </div>
+        </sc-if>
 
-      <div data-screen-label="1a 空状态" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #D9D5CB; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column;">
-        <div style="height: 40px; flex: none; display: flex; align-items: center; padding: 0 14px; gap: 12px; background: #D2CDC2; border-bottom: 1px solid rgba(40,34,26,0.09);">
-          <div style="display: flex; gap: 8px;">
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4796B;"></div>
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4A96B;"></div>
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #8AA57C;"></div>
-          </div>
-          <div style="flex: 1; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8A8378;">未命名</div>
-          <div style="width: 46px;"></div>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 26px 0 0;">
-          <div style="width: 620px; background: #FBFAF5; border-radius: 3px 3px 0 0; box-shadow: 0 -1px 0 rgba(40,34,26,0.06), 0 10px 30px -12px rgba(40,34,26,0.30); padding: 44px 62px 0; display: flex; flex-direction: column;">
-            <div style="display: flex; align-items: center; gap: 2px; margin-bottom: 40px;">
-              <span style="font-size: 26px; font-weight: 600; color: #C2BBAE;">开始写</span>
-              <span style="width: 2px; height: 28px; background: #322E28;"></span>
-            </div>
-            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #A39B8E; margin-bottom: 14px;">最近文件</div>
-            <div style="display: flex; flex-direction: column;">
-              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid #EFEBE1;">
-                <span style="font-size: 15px;">2026-09.md</span>
-                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/notes</span>
+        <sc-if value="{{ splitView }}" hint-placeholder-val="{{ false }}">
+          <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; animation: mt-rise 140ms ease-out;">
+            <div style="flex: none; display: grid; grid-template-columns: minmax(0,1fr) 18px minmax(0,1fr); padding: 12px 20px 10px; border-bottom: 1px solid #EEEAE0;">
+              <div style="display: flex; align-items: baseline; gap: 10px; min-width: 0;">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #3A352E;">排好版的</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E675C;">看到的样子</span>
               </div>
-              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid #EFEBE1;">
-                <span style="font-size: 15px;">ADR-0002 编辑器持有文档.md</span>
-                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown/docs/adr</span>
-              </div>
-              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid #EFEBE1;">
-                <span style="font-size: 15px;">交接.md</span>
-                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown</span>
+              <div></div>
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0;">
+                <div style="display: flex; align-items: baseline; gap: 10px;">
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #3A352E;">原文</span>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E675C;">{{ splitTally }}</span>
+                </div>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E675C;">段段对齐</span>
               </div>
             </div>
-            <div style="margin-top: auto; padding: 20px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F; display: flex; gap: 18px;">
-              <span>⌘N 新建</span><span>⌘O 打开</span>
+            <div style="flex: 1; min-height: 0; overflow: auto; padding: 8px 20px 24px;">{{ splitEl }}</div>
+            <div style="flex: none; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 20px; border-top: 1px solid #EEEAE0;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E675C;">点任意一段回写作，光标落在那一段 · Esc 回写作</span>
+              <button onClick="{{ toDiffFromSplit }}" style="border: 1px solid #E2DCCE; background: transparent; border-radius: 5px; padding: 4px 11px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #4A443B; cursor: pointer;" style-hover="background:#F0ECE2">换成磁盘对照 ⇧⌘/</button>
             </div>
           </div>
-        </div>
-      </div>
+        </sc-if>
 
-      <div data-screen-label="1a 最近文件" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #D9D5CB; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 40px; flex: none; display: flex; align-items: center; padding: 0 14px; gap: 12px; background: #D2CDC2; border-bottom: 1px solid rgba(40,34,26,0.09);">
-          <div style="display: flex; gap: 8px;">
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4796B;"></div>
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #C4A96B;"></div>
-            <div style="width: 11px; height: 11px; border-radius: 50%; background: #8AA57C;"></div>
+        <sc-if value="{{ pageView }}" hint-placeholder-val="{{ true }}">
+        <div onMouseDown="{{ focusDoc }}" style="flex: 1; min-height: 0; overflow: auto; padding: 34px 0 80px; display: flex; justify-content: center;">
+          <div style="width: 535px; position: relative;">
+
+            <sc-if value="{{ singleSource }}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 14px; animation: mt-rise 140ms ease-out;">
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                  <div style="height: 1px; background: #EEEAE0;"></div>
+                  <div style="text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E675C;">这里改的是保存出去的原文</div>
+                </div>
+                <textarea value="{{ sourceValue }}" onChange="{{ onSourceInput }}" spellcheck="false" style="width: 100%; min-height: 440px; border: none; background: transparent; resize: none; font-family: 'IBM Plex Mono', monospace; font-size: 15px; line-height: 1.8; color: #2E2A24;"></textarea>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ prose }}" hint-placeholder-val="{{ true }}">
+              <div style="animation: mt-rise 140ms ease-out;">{{ docEl }}</div>
+            </sc-if>
+
+            <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; top: 0; left: 0; right: 0; pointer-events: none; display: flex; flex-direction: column; gap: 42px;">
+                <div style="font-size: 18px; line-height: 1.8; color: #C2BBAE;">开始写</div>
+                <sc-if value="{{ hints }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; flex-direction: column; gap: 12px; animation: mt-fade 300ms ease-out;">
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #6E675C;">用得最多的几条</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px 40px;">
+                      <sc-for list="{{ hintList }}" as="h" hint-placeholder-count="6">
+                        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 13.5px; color: #6E675C;"><span>{{ h.label }}</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;">{{ h.key }}</span></div>
+                      </sc-for>
+                    </div>
+                    <div style="font-size: 13px; line-height: 1.6; color: #6E675C;">余下 18 条都在菜单栏的「格式」与「段落」里。打第一个字，这张便条就走。</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
           </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <div style="display: flex; align-items: center; gap: 7px; padding: 3px 10px; border-radius: 5px; background: #C4BEB1;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">写作工具的一点想法.md</span>
-              <span style="width: 6px; height: 6px; border-radius: 50%; background: #B5893F;"></span>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showWords }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeWords }}" style="position: absolute; inset: 0; z-index: 20;"></div>
+          <div style="position: absolute; top: 6px; right: 10px; z-index: 21; width: 250px; padding: 14px 16px 13px; background: #FDFCF9; border: 1px solid #E2DCCE; border-radius: 8px; box-shadow: 0 14px 34px -12px rgba(40,34,26,0.42); display: flex; flex-direction: column; gap: 10px; animation: mt-fade 100ms ease-out;">
+            <sc-for list="{{ stats }}" as="s" hint-placeholder-count="5">
+              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 14px;">
+                <span style="font-size: 13.5px; color: #5C564C;">{{ s.label }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #2E2A24;">{{ s.value }}</span>
+              </div>
+            </sc-for>
+            <div style="height: 1px; background: #F2EEE4;"></div>
+            <div style="font-size: 12px; line-height: 1.55; color: #8A8378; text-wrap: pretty;">中文按字计，西文按词计，不含 Markdown 标记。输入法候选未提交时不计入。</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showRecent }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeRecent }}" style="position: absolute; inset: 0; z-index: 20;"></div>
+          <div style="position: absolute; top: 4px; left: 50%; margin-left: -158px; z-index: 21; width: 316px; padding: 6px; background: #FDFCF9; border: 1px solid #E2DCCE; border-radius: 8px; box-shadow: 0 14px 34px -12px rgba(40,34,26,0.42); display: flex; flex-direction: column; gap: 1px; animation: mt-fade 100ms ease-out;">
+            <div style="padding: 5px 10px 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #A39B8E;">最近打开</div>
+            <sc-for list="{{ recent }}" as="f" hint-placeholder-count="4">
+              <button onClick="{{ f.open }}" onMouseEnter="{{ f.hover }}" style="{{ f.rowStyle }}">
+                <span style="font-size: 13.5px; color: #2E2A24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ f.name }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #A39B8E; flex: none;">{{ f.meta }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ dragging }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; z-index: 30; background: rgba(253,252,249,0.88); display: flex; align-items: center; justify-content: center; animation: mt-fade 110ms ease-out;">
+            <div style="font-size: 16px; color: #5C564C;">松手打开 · 当前文档会留在这个窗口</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ confirmOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; z-index: 34; background: rgba(231,228,220,0.62); display: flex; align-items: center; justify-content: center; animation: mt-fade 110ms ease-out;">
+            <div style="width: 420px; padding: 22px 24px 18px; background: #FDFCF9; border: 1px solid #E2DCCE; border-radius: 10px; box-shadow: 0 22px 50px -18px rgba(40,34,26,0.5); display: flex; flex-direction: column; gap: 12px;">
+              <div style="font-size: 17px; font-weight: 600;">{{ confirmTitle }}</div>
+              <div style="font-size: 14px; line-height: 1.6; color: #5C564C; text-wrap: pretty;">{{ confirmBody }}</div>
+              <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+                <sc-for list="{{ confirmActions }}" as="a" hint-placeholder-count="3">
+                  <button onClick="{{ a.click }}" style="{{ a.style }}">{{ a.label }}<span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; opacity: 0.62; margin-left: 6px;">{{ a.key }}</span></button>
+                </sc-for>
+              </div>
             </div>
           </div>
-          <div style="width: 46px;"></div>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 26px 0 0; filter: saturate(0.9);">
-          <div style="width: 620px; background: #FBFAF5; border-radius: 3px 3px 0 0; box-shadow: 0 10px 30px -12px rgba(40,34,26,0.30); padding: 44px 62px 0; opacity: 0.5;">
-            <div style="font-size: 26px; font-weight: 600; line-height: 1.3; margin-bottom: 14px;">写作工具的一点想法</div>
-            <div style="font-size: 17px; line-height: 1.72; color: #322E28;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
+        </sc-if>
+
+        <sc-if value="{{ pulse }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; z-index: 32; pointer-events: none; animation: mt-pulse 520ms ease-out;"></div>
+        </sc-if>
+
+        <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 36; display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: #FDFCF9; border: 1px solid #E2DCCE; border-radius: 7px; box-shadow: 0 10px 26px -10px rgba(40,34,26,0.34); animation: mt-toast 160ms ease-out;">
+            <span style="font-size: 13.5px; color: #3A352E;">{{ toastText }}</span>
+            <sc-if value="{{ toastHasAction }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ toastAction }}" style="border: none; background: transparent; padding: 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3E5C86; cursor: pointer;" style-hover="color:#2C4468">{{ toastActionLabel }}</button>
+            </sc-if>
           </div>
-        </div>
-        <div style="position: absolute; top: 44px; left: 50%; transform: translateX(-50%); width: 400px; background: #FDFCF8; border: 1px solid rgba(40,34,26,0.12); border-radius: 8px; box-shadow: 0 18px 40px -14px rgba(40,34,26,0.45); padding: 6px; display: flex; flex-direction: column;">
-          <div style="padding: 8px 12px 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #A39B8E;">最近文件</div>
-          <div style="padding: 8px 12px; border-radius: 5px; background: #EDE9DE; display: flex; flex-direction: column; gap: 2px;">
-            <span style="font-size: 14px;">2026-09.md</span>
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8378;">~/notes/2026-09.md</span>
-          </div>
-          <div style="padding: 8px 12px; display: flex; flex-direction: column; gap: 2px;">
-            <span style="font-size: 14px;">ADR-0002 编辑器持有文档.md</span>
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown/docs/adr</span>
-          </div>
-          <div style="padding: 8px 12px; display: flex; flex-direction: column; gap: 2px;">
-            <span style="font-size: 14px;">交接.md</span>
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown/交接.md</span>
-          </div>
-          <div style="margin: 6px 12px 8px; padding-top: 10px; border-top: 1px solid #EAE6DC; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F;">
-            <span>⌘O 打开其他…</span><span>↑↓ 选择</span>
-          </div>
-        </div>
+        </sc-if>
+
       </div>
     </div>
   </div>
 
-  <div id="1b" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">1b</span>
-      <span style="font-size: 20px; font-weight: 600;">满窗 · 整个窗口就是纸</span>
-      <span style="font-size: 14px; color: #6E675C;">没有卡片边界、没有标题栏，只有行宽限制和一条 26px 状态条。写作区最大，otty 式的克制。</span>
-    </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
-
-      <div data-screen-label="1b 写作中" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FBFAF5; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="position: absolute; top: 15px; left: 15px; display: flex; gap: 8px; z-index: 2;">
-          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
-          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
-          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 62px 40px 0;">
-          <div style="--measure: 34rem; --body: 17px; width: 100%; display: flex; justify-content: center;">
-            <div style="max-width: var(--measure); width: 100%; font-family: 'Helvetica Neue', 'PingFang SC', sans-serif; font-size: var(--body); line-height: 1.78; color: #322E28;">
-              <div style="font-size: 24px; font-weight: 600; line-height: 1.34; margin-bottom: 18px; letter-spacing: -0.01em;">写作工具的一点想法</div>
-              <div style="margin-bottom: 16px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在——而这件事一条状态条就够了。</div>
-              <div style="border-left: 2px solid #D7D1C3; padding-left: 18px; color: #6E675C; margin-bottom: 16px;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
-              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.65; background: #F3F0E7; border-radius: 6px; padding: 13px 15px; color: #4A443B; margin-bottom: 16px;">$ milktown ~/notes/2026-09.md</div>
-              <div style="display: grid; grid-template-columns: 1fr 90px; font-size: 14px;">
-                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E4DFD3;">操作</div>
-                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E4DFD3;">键</div>
-                <div style="padding: 8px 0; border-bottom: 1px solid #F0ECE2;">保存</div>
-                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; border-bottom: 1px solid #F0ECE2;">⌘S</div>
-                <div style="padding: 8px 0;">另存为</div>
-                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace;">⇧⌘S</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="height: 26px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-top: 1px solid #EDE9DE; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A9285;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="color: #4A443B;">2026-09.md</span>
-            <span style="width: 5px; height: 5px; border-radius: 50%; background: #B5893F;"></span>
-            <span>未保存</span>
-          </div>
-          <div style="display: flex; gap: 16px;"><span>1,204 字</span><span>~/notes</span></div>
-        </div>
-      </div>
-
-      <div data-screen-label="1b 空状态" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FBFAF5; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="position: absolute; top: 15px; left: 15px; display: flex; gap: 8px;">
-          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
-          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
-          <div style="width: 11px; height: 11px; border-radius: 50%; background: #DCD6C9;"></div>
-        </div>
-        <div style="flex: 1; display: flex; justify-content: center; padding: 100px 40px 0;">
-          <div style="width: 34rem; font-family: 'Helvetica Neue', 'PingFang SC', sans-serif;">
-            <div style="display: flex; align-items: center; gap: 2px; margin-bottom: 52px;">
-              <span style="font-size: 24px; font-weight: 600; color: #C6BFB1;">写点什么</span>
-              <span style="width: 2px; height: 26px; background: #322E28;"></span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">
-                <span style="color: #C6BFB1; width: 14px;">1</span><span style="color: #322E28;">~/notes/2026-09.md</span>
-              </div>
-              <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">
-                <span style="color: #C6BFB1; width: 14px;">2</span><span style="color: #555047;">~/milktown/docs/adr/0002-editor-owns-the-document.md</span>
-              </div>
-              <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">
-                <span style="color: #C6BFB1; width: 14px;">3</span><span style="color: #555047;">~/milktown/交接.md</span>
-              </div>
-              <div style="display: flex; align-items: baseline; gap: 12px; padding: 7px 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">
-                <span style="color: #C6BFB1; width: 14px;">4</span><span style="color: #555047;">~/notes/2026-08.md</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="height: 26px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-top: 1px solid #EDE9DE; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A9285;">
-          <span>未命名</span>
-          <div style="display: flex; gap: 16px;"><span>⌘1–4 打开</span><span>⌘O 其他…</span></div>
-        </div>
-      </div>
-
-      <div data-screen-label="1b 最近文件" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FBFAF5; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="position: absolute; inset: 0; background: rgba(251,250,245,0.72);"></div>
-        <div style="flex: 1; padding: 62px 40px 0; display: flex; justify-content: center; opacity: 0.35;">
-          <div style="width: 34rem; font-family: 'Helvetica Neue', 'PingFang SC', sans-serif; font-size: 17px; line-height: 1.78;">
-            <div style="font-size: 24px; font-weight: 600; margin-bottom: 18px;">写作工具的一点想法</div>
-            <div>工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
-          </div>
-        </div>
-        <div style="position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 460px; background: #FDFCF8; border: 1px solid rgba(40,34,26,0.10); border-radius: 10px; box-shadow: 0 24px 50px -16px rgba(40,34,26,0.40); overflow: hidden;">
-          <div style="padding: 13px 16px; border-bottom: 1px solid #EFEBE1; display: flex; align-items: center; gap: 8px;">
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #A39B8E;">›</span>
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #322E28;">note</span>
-            <span style="width: 1.5px; height: 15px; background: #322E28;"></span>
-          </div>
-          <div style="padding: 6px;">
-            <div style="padding: 9px 12px; border-radius: 6px; background: #EDE9DE; display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px;">~/<b>note</b>s/2026-09.md</span>
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8378;">2 小时前</span>
-            </div>
-            <div style="padding: 9px 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #555047;">~/<b>note</b>s/2026-08.md</span>
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">上周</span>
-            </div>
-            <div style="padding: 9px 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #555047;">~/milktown/<b>note</b>-to-self.md</span>
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">8 月</span>
-            </div>
-          </div>
-          <div style="padding: 10px 16px; border-top: 1px solid #EFEBE1; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F;">
-            <span>↵ 在本窗口打开</span><span>⌘↵ 新窗口</span>
-          </div>
-        </div>
-        <div style="height: 26px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-top: 1px solid #EDE9DE; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A9285;">
-          <span>2026-09.md</span><span>1,204 字</span>
-        </div>
-      </div>
-    </div>
+  <div style="width: 1000px; max-width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8378; margin-right: 4px;">触发那些等不来的状态</span>
+    <sc-for list="{{ demos }}" as="d" hint-placeholder-count="5">
+      <button onClick="{{ d.click }}" style="border: 1px solid #CFCABF; background: transparent; border-radius: 6px; padding: 5px 11px; font-size: 13px; color: #4A443B; cursor: pointer; font-family: inherit;" style-hover="background:#EFEBE1">{{ d.label }}</button>
+    </sc-for>
   </div>
 
-  <div id="1c" style="display: flex; flex-direction: column; gap: 18px;">
-    <div style="display: flex; align-items: baseline; gap: 14px;">
-      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">1c</span>
-      <span style="font-size: 20px; font-weight: 600;">克制 · 纸白 + 一条发丝栏</span>
-      <span style="font-size: 14px; color: #6E675C;">没有纸纹、没有投影、没有桌面色。顶部 34px 一条栏，文件名本身就是最近文件入口，脏状态用 * 保留旧约定。</span>
+  <div style="width: 1000px; max-width: 100%; margin-top: 10px; padding: 20px 24px; background: #FDFCF9; border-radius: 9px; box-shadow: 0 0 0 1px rgba(40,34,26,0.09); display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px 34px;">
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">文件名按钮</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #4A443B; text-wrap: pretty;">热区撑满标题栏 34px、最小宽 96px，视觉只有 22px 的圆角块。悬停 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#F0ECE2</span>，键盘聚焦再加 1.5px <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#8A8378</span> 内描边。▾ 不是独立按钮。</div>
     </div>
-    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
-
-      <div data-screen-label="1c 写作中" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <div style="display: flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md *</span>
-              <span style="font-size: 9px; color: #A39B8E;">▾</span>
-            </div>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 48px 40px 0;">
-          <div style="--measure: 66ch; --body: 18px; width: 100%; display: flex; justify-content: center;">
-            <div style="max-width: var(--measure); width: 100%; font-size: var(--body); line-height: 1.8; color: #2E2A24;">
-              <div style="font-size: 27px; font-weight: 600; line-height: 1.32; margin-bottom: 20px; letter-spacing: -0.012em;">写作工具的一点想法</div>
-              <div style="margin-bottom: 18px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
-              <div style="padding-left: 20px; border-left: 2px solid #E2DCCE; color: #6E675C; margin-bottom: 18px;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
-              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; line-height: 1.7; border-top: 1px solid #EEEAE0; border-bottom: 1px solid #EEEAE0; padding: 12px 0; color: #4A443B; margin-bottom: 18px;">$ milktown ~/notes/2026-09.md</div>
-              <div style="display: grid; grid-template-columns: 1fr 100px; font-size: 15px;">
-                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E7E2D6;">操作</div>
-                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #A39B8E; border-bottom: 1px solid #E7E2D6;">键</div>
-                <div style="padding: 8px 0; border-bottom: 1px solid #F2EEE4;">保存</div>
-                <div style="padding: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 14px; border-bottom: 1px solid #F2EEE4;">⌘S</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div data-screen-label="1c 空状态" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #A39B8E;">未命名 ▾</div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #C6BFB1;">0</span>
-        </div>
-        <div style="flex: 1; display: flex; justify-content: center; padding: 48px 40px 0;">
-          <div style="width: 66ch; max-width: 100%;">
-            <div style="display: flex; align-items: center; gap: 2px; margin-bottom: 46px;">
-              <span style="font-size: 27px; font-weight: 600; color: #C9C2B4;">开始写</span>
-              <span style="width: 2px; height: 29px; background: #2E2A24;"></span>
-            </div>
-            <div style="border-top: 1px solid #EEEAE0; display: flex; flex-direction: column;">
-              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid #F2EEE4;">
-                <span style="font-size: 16px;">2026-09.md</span>
-                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/notes · 2 小时前</span>
-              </div>
-              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid #F2EEE4;">
-                <span style="font-size: 16px;">0002 编辑器持有文档.md</span>
-                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown/docs/adr · 昨天</span>
-              </div>
-              <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid #F2EEE4;">
-                <span style="font-size: 16px;">交接.md</span>
-                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown · 上周</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div data-screen-label="1c 最近文件" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #FDFCF9; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; position: relative;">
-        <div style="height: 34px; flex: none; display: flex; align-items: center; padding: 0 13px; gap: 12px; border-bottom: 1px solid #EEEAE0;">
-          <div style="width: 72px; flex: none; display: flex; align-items: center; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
-          </div>
-          <div style="flex: 1; display: flex; justify-content: center;">
-            <div style="display: flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; background: #F0ECE2;">
-              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #3A352E;">2026-09.md *</span>
-              <span style="font-size: 9px; color: #6E675C;">▾</span>
-            </div>
-          </div>
-          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">1,204</span>
-        </div>
-        <div style="flex: 1; overflow: hidden; display: flex; justify-content: center; padding: 48px 40px 0; opacity: 0.4;">
-          <div style="width: 66ch; font-size: 18px; line-height: 1.8; color: #2E2A24;">
-            <div style="font-size: 27px; font-weight: 600; margin-bottom: 20px;">写作工具的一点想法</div>
-            <div>工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
-          </div>
-        </div>
-        <div style="position: absolute; top: 36px; left: 50%; transform: translateX(-50%); width: 340px; background: #FFFEFB; border: 1px solid rgba(40,34,26,0.10); border-radius: 7px; box-shadow: 0 14px 34px -12px rgba(40,34,26,0.35); padding: 5px 0;">
-          <div style="padding: 7px 14px; background: #F0ECE2; display: flex; align-items: baseline; justify-content: space-between; gap: 14px;">
-            <span style="font-size: 14px;">2026-09.md</span>
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A8378;">~/notes</span>
-          </div>
-          <div style="padding: 7px 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 14px;">
-            <span style="font-size: 14px; color: #555047;">0002 编辑器持有文档.md</span>
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">…/adr</span>
-          </div>
-          <div style="padding: 7px 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 14px;">
-            <span style="font-size: 14px; color: #555047;">交接.md</span>
-            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A39B8E;">~/milktown</span>
-          </div>
-          <div style="margin: 5px 0 0; border-top: 1px solid #F2EEE4; padding: 8px 14px 4px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B4AC9F;">
-            <span>打开其他… ⌘O</span><span>新建 ⌘N</span>
-          </div>
-        </div>
-      </div>
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">脏标记</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #4A443B; text-wrap: pretty;">5px 圆点 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#8F7A4A</span>，在文件名与 ▾ 之间。<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">*</span> 紧贴文件名会被读成文件名的一部分，圆点是标记不是字符。Tweaks 里可换回星号。</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">字数</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #4A443B; text-wrap: pretty;">口径写在数字后面（「字」），颜色从 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#A39B8E</span> 换到 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#6E675C</span>——11px 压在米色上要过 4.5:1。点开是口径面板，不是第二个工具栏。</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">光标行显源码</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #4A443B; text-wrap: pretty;">要有。标记 mono 0.86em <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#6E675C</span>：更淡的灰在 15px 上读不出来，就只剩装饰。行首标记悬挂在纸外，段落不左右跳；行内标记占位，只推挤当前行。显隐是纯 CSS 切换，光标不会掉。</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">输入法</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #4A443B; text-wrap: pretty;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">compositionstart</span> 到 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">compositionend</span> 之间冻结标记显隐、也不更新字数。候选框还开着的时候纸面不许动。</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">排版与原文并排</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #4A443B; text-wrap: pretty;">「视图」第三项，⌥⌘/。左边排好版的、右边原文，对齐单位是<strong style="font-weight: 600;">段</strong>不是行——一段一格，两边同高，所以标题、引用、表格都能一眼对上。右边带整份连续行号（段间空行也数），悬停整行两边一起上 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#F4F1E8</span> 并在原文侧亮 2px 边标。点任意一段就回写作、光标落在那一段末尾；并排本身只读，Esc 退出。</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">磁盘与当前对照</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #4A443B; text-wrap: pretty;">版本对照，不是另一个页面：入口同在「视图」菜单（⇧⌘/，与 ⌘/、⌥⌘/ 三项互斥打勾）。左边磁盘上的那一份，右边当前；一个滚动容器里两列，天然联动。改动行 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#F6E0DC</span> / <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#E4EFDC</span>、行内再深一档，空位 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#FAF8F3</span>，行号 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#6E675C</span>。↑↓ 在改动之间跳，Esc 回写作。只读——真正要改的那份在右边，退出就接着写。</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #A39B8E;">内容控件统一皮</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #4A443B; text-wrap: pretty;">纸底 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#FDFCF9</span> / 1px <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">#E2DCCE</span> / 6px 圆角 / <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">0 6px 20px -8px rgba(40,34,26,.28)</span>，文字按钮不用图标，距目标 8px。链接、代码块语言、表格把手、图片、公式五处同一套。</div>
     </div>
   </div>
-</section>
-
-<section style="display: flex; flex-direction: column; gap: 18px;">
-  <div style="display: flex; align-items: baseline; gap: 14px;">
-    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid #C9C3B6; border-radius: 4px; color: #4A443B;">现状</span>
-    <span style="font-size: 20px; font-weight: 600;">旧实现复刻（对照用）</span>
-    <span style="font-size: 14px; color: #6E675C;">按 Toolbar.css / Editor.css / App.css 原值复刻：48px 工具栏、四个 emoji 按钮、#2563eb 主按钮、圆角文件名胶囊、20px 内边距的 16px/1.6 正文。</span>
-  </div>
-  <div data-screen-label="现状 旧实现" style="width: 800px; height: 600px; border-radius: 11px; overflow: hidden; background: #ffffff; box-shadow: 0 26px 60px -24px rgba(40,34,26,0.45), 0 0 0 1px rgba(40,34,26,0.10); display: flex; flex-direction: column; font-family: -apple-system, 'Helvetica Neue', 'PingFang SC', sans-serif;">
-    <div style="min-height: 48px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 16px; background: #f8f9fa; border-bottom: 1px solid #e1e4e8;">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #ffffff; color: #24292f; font-size: 14px; font-weight: 500;">📄 新建</div>
-        <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #ffffff; color: #24292f; font-size: 14px; font-weight: 500;">📂 打开</div>
-        <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #2563eb; border-radius: 6px; background: #2563eb; color: #ffffff; font-size: 14px; font-weight: 500;">💾 保存</div>
-        <div style="display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #ffffff; color: #24292f; font-size: 14px; font-weight: 500;">📝 另存为</div>
-      </div>
-      <div style="flex: 1; display: flex; justify-content: center;">
-        <span style="font-size: 14px; font-weight: 500; color: #374151; background: #ffffff; padding: 4px 12px; border-radius: 16px; border: 1px solid #e5e7eb;">2026-09.md *</span>
-      </div>
-      <span style="font-size: 14px; font-weight: 600; color: #374151; margin-left: 16px;">Milktown</span>
-    </div>
-    <div style="flex: 1; overflow: hidden; padding: 20px; font-size: 16px; line-height: 1.6; color: #24292f;">
-      <div style="font-size: 2em; font-weight: 600; color: #1f2328; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-bottom: 0.5em;">写作工具的一点想法</div>
-      <div style="margin-bottom: 16px;">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</div>
-      <div style="margin: 0 0 16px; padding-left: 16px; border-left: 4px solid #d0d7de; color: #656d76;">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</div>
-      <div style="background: #f6f8fa; border-radius: 6px; padding: 16px; font-family: Monaco, Menlo, monospace; font-size: 85%; margin-bottom: 16px;">$ milktown ~/notes/2026-09.md</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; font-size: 16px;">
-        <div style="border: 1px solid #d0d7de; padding: 6px 13px; background: #f6f8fa; font-weight: 600;">操作</div>
-        <div style="border: 1px solid #d0d7de; border-left: none; padding: 6px 13px; background: #f6f8fa; font-weight: 600;">快捷键</div>
-        <div style="border: 1px solid #d0d7de; border-top: none; padding: 6px 13px;">保存</div>
-        <div style="border: 1px solid #d0d7de; border-top: none; border-left: none; padding: 6px 13px;">⌘S</div>
-      </div>
-    </div>
-  </div>
-</section>
 
 </div>
+
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;measure&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:48,&quot;max&quot;:88,&quot;step&quot;:2,&quot;default&quot;:66,&quot;unit&quot;:&quot;ch&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;原型排版&quot;},&quot;bodySize&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:15,&quot;max&quot;:21,&quot;step&quot;:1,&quot;default&quot;:18,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;原型排版&quot;},&quot;dirtyMark&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;*&quot;,&quot;•&quot;,&quot;·&quot;,&quot;未保存&quot;],&quot;default&quot;:&quot;*&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;原型排版&quot;},&quot;showMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;画板&quot;},&quot;dropPreview&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;画板&quot;}}">
-const SEED = (title) => `<h1 style="font-size:1.5em;font-weight:600;line-height:1.32;margin:0 0 .7em;letter-spacing:-0.012em">${title}</h1><p style="margin:0 0 .85em">工具栏上的每个按钮都在偷高度。四个操作都有快捷键，那条横栏留在屏幕上的唯一理由，是让我确认文件还在。</p><blockquote style="margin:0 0 .85em;padding-left:20px;border-left:2px solid #E2DCCE;color:#6E675C">一个自用的编辑器，验收标准只有一条：作者今天愿意用它写东西吗。</blockquote><pre style="margin:0 0 .95em;font-family:'IBM Plex Mono',monospace;font-size:.75em;line-height:1.7;border-top:1px solid #EEEAE0;border-bottom:1px solid #EEEAE0;padding:12px 0;color:#4A443B">$ milktown ~/notes/2026-09.md</pre><table style="border-collapse:collapse;width:100%;font-size:.85em"><tbody><tr><td style="padding:8px 0;border-bottom:1px solid #E7E2D6;font-family:'IBM Plex Mono',monospace;font-size:.8em;letter-spacing:.1em;color:#A39B8E">操作</td><td style="padding:8px 0;border-bottom:1px solid #E7E2D6;font-family:'IBM Plex Mono',monospace;font-size:.8em;letter-spacing:.1em;color:#A39B8E;width:100px">键</td></tr><tr><td style="padding:8px 0;border-bottom:1px solid #F2EEE4">保存</td><td style="padding:8px 0;border-bottom:1px solid #F2EEE4;font-family:'IBM Plex Mono',monospace">⌘S</td></tr><tr><td style="padding:8px 0">另存为</td><td style="padding:8px 0;font-family:'IBM Plex Mono',monospace">⇧⌘S</td></tr></tbody></table><p style="margin:.2em 0 0"><br></p>`;
+<script type="text/x-dc" data-dc-script data-props="{&quot;sourceMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;行为&quot;},&quot;emptyHints&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;行为&quot;},&quot;dirtyMark&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;圆点&quot;,&quot;星号&quot;,&quot;未保存&quot;],&quot;default&quot;:&quot;圆点&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;行为&quot;},&quot;bodySize&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:15,&quot;max&quot;:21,&quot;step&quot;:1,&quot;default&quot;:18,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;排版&quot;}}">
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+const SERIF = "'Source Serif 4', 'Songti SC', serif";
+const MARKC = '#6E675C';
+
+const DOC1 = [
+  '# 写作工具的一点想法', '',
+  '工具栏上的每个按钮都在**偷高度**。48px 的一条，一天写四小时，就是四小时都在看那条按钮。', '',
+  '> 不通栏，不吸顶——通栏会让它看起来像工具栏，而这个应用不要工具栏。', '',
+  '所以 18 条排版命令全搬进[系统菜单栏](milktown://menu)，行内代码写成 `code` 也不用按钮；要看真相就按 ⌘/。', '',
+  '## 光标进到哪一行，标记就在那一行显出来', '',
+  '- 平时看到的是排好版的样子', '',
+  '- 光标移进来，`##`、`**` 显形，可以直接改', '',
+  '- 输入法候选还开着的时候，标记不动', '',
+  '```markdown', '## 标记本身就是操作入口', '**粗体**、`行内代码`、[链接](https://example.com)', '```', '',
+  '| 命令 | 快捷键 |', '| 加粗 | ⌘B |', '| 引用 | ⌥⌘Q |', '| 看原文 | ⌘/ |', '',
+  '![纸面示意图](sketch/paper.png)', '',
+  '排版之外的东西归内容控件管，比如公式 $E=mc^2$ 和上面那张图。', '',
+  '---', '',
+  '写到这里就够了。'
+].join('\n');
+
+const DOC2 = [
+  '# 菜单栏清单', '',
+  '**格式**五条、**段落**十三条，项目 id 与 `src/editor/format.ts` 里的清单逐字对齐。', '',
+  '> 对不上的时候测试会红。', '',
+  '- 加粗 ⌘B / 斜体 ⌘I / 行内代码 ⇧⌘`', '',
+  '- 正文 ⌘0，标题 ⌘1 到 ⌘6', '',
+  '菜单是唯一能让人「发现」这些的地方。'
+].join('\n');
+
+const DOC3 = [
+  '# 会议记录 0904', '',
+  '定了：写作面上不要工具栏。选的是**乙**——关掉 Crepe 的浮动控件，命令进原生菜单。', '',
+  '- `Feature.Toolbar` 关', '',
+  '- `Feature.BlockEdit` 关', '',
+  '- 链接、表格、代码块、图片、公式留着，换皮', '',
+  '> 实现里开着两条工具栏，那是实现走偏了，不是设计要改。'
+].join('\n');
+
+const DOC4 = [
+  '# 读书笔记', '',
+  '所见即所得与「你在写 Markdown」两件事同时成立，靠的是标记本身就是操作入口。', '',
+  '`##` 显出来的那一刻，用户知道自己在写什么。'
+].join('\n');
 
 const FILES = [
-  { name: '2026-09.md', dir: '~/notes', meta: '~/notes · 2 小时前', path: '~/notes/2026-09.md', title: '写作工具的一点想法' },
-  { name: '0002 编辑器持有文档.md', dir: '~/milktown/docs/adr', meta: '…/docs/adr · 昨天', path: '~/milktown/docs/adr/0002-editor-owns-the-document.md', title: '编辑器持有文档' },
-  { name: '交接.md', dir: '~/milktown', meta: '~/milktown · 上周', path: '~/milktown/交接.md', title: 'UI 设计会话交接' },
-  { name: '2026-08.md', dir: '~/notes', meta: '~/notes · 8 月', path: '~/notes/2026-08.md', title: '八月' }
+  { name: '写作工具的一点想法.md', path: '~/Documents/写作工具的一点想法.md', meta: '今天 14:02', body: DOC1 },
+  { name: '菜单栏清单.md', path: '~/Documents/Milktown/菜单栏清单.md', meta: '昨天 21:40', body: DOC2 },
+  { name: '会议记录 0904.md', path: '~/Desktop/会议记录 0904.md', meta: '9 月 4 日', body: DOC3 },
+  { name: '读书笔记.md', path: '~/Documents/读书笔记.md', meta: '8 月 28 日', body: DOC4 }
 ];
 
+const FORMAT = [
+  { id: 'bold', label: '加粗', key: '⌘B', wrap: '**' },
+  { id: 'italic', label: '斜体', key: '⌘I', wrap: '*' },
+  { id: 'code', label: '行内代码', key: '⇧⌘`', wrap: '`' },
+  { id: 'strike', label: '删除线', key: '⇧⌘X', wrap: '~~' },
+  { id: 'link', label: '超链接', key: '⌘K', link: true }
+];
+
+const PARA = [
+  { id: 'p', label: '正文', key: '⌘0', prefix: '' },
+  { id: 'h1', label: '标题 1', key: '⌘1', prefix: '# ' },
+  { id: 'h2', label: '标题 2', key: '⌘2', prefix: '## ' },
+  { id: 'h3', label: '标题 3', key: '⌘3', prefix: '### ' },
+  { id: 'h4', label: '标题 4', key: '⌘4', prefix: '#### ' },
+  { id: 'h5', label: '标题 5', key: '⌘5', prefix: '##### ' },
+  { id: 'h6', label: '标题 6', key: '⌘6', prefix: '###### ' },
+  { id: 'ul', label: '无序列表', key: '⌥⌘U', prefix: '- ' },
+  { id: 'ol', label: '有序列表', key: '⌥⌘O', prefix: '1. ' },
+  { id: 'quote', label: '引用', key: '⌥⌘Q', prefix: '> ' },
+  { id: 'codeblock', label: '代码块', key: '⌥⌘C', insert: '```text\n在这里写代码\n```' },
+  { id: 'table', label: '表格', key: '⌥⌘T', insert: '| 列一 | 列二 |\n|  |  |' },
+  { id: 'hr', label: '分隔线', key: '⌥⌘-', insert: '---' }
+];
+
+const HINTS = [
+  { label: '标题 1', key: '⌘1' }, { label: '加粗', key: '⌘B' },
+  { label: '引用', key: '⌥⌘Q' }, { label: '代码块', key: '⌥⌘C' },
+  { label: '查找替换', key: '⌘F' }, { label: '看原文', key: '⌘/' }
+];
+
+/* 磁盘上那一份：比当前少两处改动，进对照视图就有东西可看。 */
+const DISK1 = DOC1
+  .replace('工具栏上的每个按钮都在**偷高度**。48px 的一条，一天写四小时，就是四小时都在看那条按钮。', '工具栏上的每个按钮都在偷高度。48px 的一条，一天写四小时都在看它。')
+  .replace('## 光标进到哪一行，标记就在那一行显出来', '## 光标行显源码')
+  .replace('- 输入法候选还开着的时候，标记不动\n', '');
+
+function lineDiff(before, after) {
+  const split = (t) => (t === '' ? [] : t.replace(/\n$/, '').split('\n'));
+  const a = split(before), b = split(after);
+  let head = 0;
+  while (head < a.length && head < b.length && a[head] === b[head]) head++;
+  let tail = 0;
+  while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail]) tail++;
+  const midA = a.slice(head, a.length - tail), midB = b.slice(head, b.length - tail);
+  const same = (t) => ({ kind: 'same', text: t });
+  let mid;
+  if (!midA.length) mid = midB.map(t => ({ kind: 'added', text: t }));
+  else if (!midB.length) mid = midA.map(t => ({ kind: 'removed', text: t }));
+  else {
+    const w = midB.length + 1;
+    const lcs = new Uint32Array((midA.length + 1) * w);
+    for (let i = midA.length - 1; i >= 0; i--)
+      for (let j = midB.length - 1; j >= 0; j--)
+        lcs[i * w + j] = midA[i] === midB[j] ? lcs[(i + 1) * w + j + 1] + 1 : Math.max(lcs[(i + 1) * w + j], lcs[i * w + j + 1]);
+    mid = []; let i = 0, j = 0;
+    while (i < midA.length && j < midB.length) {
+      if (midA[i] === midB[j]) { mid.push(same(midA[i])); i++; j++; }
+      else if (lcs[(i + 1) * w + j] >= lcs[i * w + j + 1]) mid.push({ kind: 'removed', text: midA[i++] });
+      else mid.push({ kind: 'added', text: midB[j++] });
+    }
+    while (i < midA.length) mid.push({ kind: 'removed', text: midA[i++] });
+    while (j < midB.length) mid.push({ kind: 'added', text: midB[j++] });
+  }
+  return [].concat(a.slice(0, head).map(same), mid, a.slice(a.length - tail).map(same));
+}
+
+const INLINE_RX = /(\*\*[^*\n]+\*\*)|(~~[^~\n]+~~)|(`[^`\n]+`)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\([^)\n]+\))|(\$[^$\n]+\$)/g;
+
+const PREFIX_RX = /^(#{1,6} |> |- |\d+\. )/;
+
 class Component extends DCLogic {
-  constructor(props) {
-    super(props);
-    this._pending = SEED(FILES[0].title);
-    this.docRef = (el) => { if (el) { this._docEl = el; this.applySeed(); } };
-    this.state = { fileIdx: 0, dirty: false, words: 0, recentOpen: false, sel: 0, toast: null, seedKey: 'init' };
+  state = {
+    fileIdx: 0,
+    blocks: DOC1.split(/\n{2,}/).map((src, i) => ({ src: src, rev: 0, id: 'b' + i })),
+    seq: 100,
+    cur: null,
+    dirty: false,
+    recentOpen: false, sel: 0,
+    showWords: false,
+    menuOpen: null, menuHover: null,
+    findOpen: false, findText: '', replaceText: '',
+    source: false, sourceValue: '', diff: false, split: false, splitHover: null,
+    dragging: false,
+    confirm: null,
+    pulse: false,
+    toast: null,
+    imgFail: false,
+    pop: null,
+    focused: false,
+    composing: false,
+    words: 0
+  };
+
+  _els = {};
+  _mb = {};
+  _pending = null;
+  _disk = DISK1;
+  _diskAt = '今天 14:02';
+  _hunks = [];
+
+  currentText() { return this.state.source ? this.state.sourceValue : this.markdown(); }
+
+  diffRows() {
+    const d = lineDiff(this._disk, this.currentText());
+    const rows = []; let i = 0, ln = 1, rn = 1;
+    while (i < d.length) {
+      if (d[i].kind === 'same') { rows.push({ kind: 'same', l: { n: ln++, t: d[i].text }, r: { n: rn++, t: d[i].text } }); i++; continue; }
+      const rem = [], add = [];
+      while (i < d.length && d[i].kind === 'removed') rem.push(d[i++].text);
+      while (i < d.length && d[i].kind === 'added') add.push(d[i++].text);
+      const n = Math.max(rem.length, add.length);
+      for (let k = 0; k < n; k++) {
+        rows.push({
+          kind: 'chg',
+          hunk: k === 0,
+          l: k < rem.length ? { n: ln++, t: rem[k] } : null,
+          r: k < add.length ? { n: rn++, t: add[k] } : null
+        });
+      }
+    }
+    return rows;
   }
 
-  componentDidMount() { this.applySeed(); document.addEventListener('keydown', this.onKey); }
-  componentWillUnmount() { document.removeEventListener('keydown', this.onKey); clearTimeout(this._t); }
-  componentDidUpdate(_, prev) { this.applySeed(prev.seedKey !== this.state.seedKey); }
+  /* 同一行里再切一层：公共前后缀之外的那一段加深，别让人自己找字。 */
+  intra(a, b) {
+    let p = 0;
+    while (p < a.length && p < b.length && a[p] === b[p]) p++;
+    let s = 0;
+    while (s < a.length - p && s < b.length - p && a[a.length - 1 - s] === b[b.length - 1 - s]) s++;
+    return { pre: a.slice(0, p), mid: [a.slice(p, a.length - s), b.slice(p, b.length - s)], suf: a.slice(a.length - s) };
+  }
 
-  seed(title) {
-    this._pending = title === null ? '<p><br></p>' : SEED(title);
-    this._touched = false;
-    const write = () => {
-      const el = this._docEl;
-      if (!el) { requestAnimationFrame(write); return; }
-      el.innerHTML = this._pending;
-      this.setState({ words: this.count(el), seedKey: String(Date.now()) });
+  cell(side, cellData, row, tint, deep) {
+    const num = React.createElement('span', {
+      key: 'n',
+      style: { fontFamily: MONO, fontSize: 10.5, lineHeight: '1.75', color: '#6E675C', textAlign: 'right', userSelect: 'none', paddingRight: 10 }
+    }, cellData ? String(cellData.n) : '');
+    let body;
+    if (!cellData) body = '';
+    else if (row.kind === 'chg' && row.l && row.r) {
+      const x = this.intra(row.l.t, row.r.t);
+      const own = side === 'l' ? x.mid[0] : x.mid[1];
+      body = [x.pre, own ? React.createElement('span', { key: 'm', style: { background: deep, borderRadius: 2 } }, own) : null, x.suf];
+    } else body = cellData.t;
+    return [num, React.createElement('span', {
+      key: 't',
+      style: {
+        fontFamily: MONO, fontSize: 12.5, lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+        color: cellData ? '#2E2A24' : 'transparent', background: cellData ? tint : '#FAF8F3',
+        padding: '0 7px', borderLeft: '2px solid ' + (cellData && row.kind === 'chg' ? (side === 'l' ? '#A6705F' : '#7E9464') : 'transparent'),
+        display: 'block', minHeight: '1.75em'
+      }
+    }, body)];
+  }
+
+  diffEl() {
+    const rows = this.diffRows();
+    this._hunks = [];
+    const out = rows.map((row, i) => {
+      if (row.hunk) this._hunks.push(i);
+      const chg = row.kind === 'chg';
+      return React.createElement('div', {
+        key: 'r' + i,
+        ref: (el) => { this._rows[i] = el; },
+        style: { display: 'grid', gridTemplateColumns: '34px minmax(0,1fr) 18px 34px minmax(0,1fr)', columnGap: 0, alignItems: 'stretch' }
+      }, [].concat(
+        this.cell('l', row.l, row, chg ? '#F6E0DC' : 'transparent', '#EFC4BB'),
+        [React.createElement('span', { key: 'gap', style: { width: 18 } })],
+        this.cell('r', row.r, row, chg ? '#E4EFDC' : 'transparent', '#C6DDB4')
+      ));
+    });
+    if (!this._hunks.length) {
+      return React.createElement('div', { style: { padding: '18px 2px', fontFamily: MONO, fontSize: 12.5, color: '#6E675C' } }, '与磁盘上的那一份一致。');
+    }
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } }, out);
+  }
+
+  jumpHunk(dir) {
+    const sc = this._diffScroll;
+    if (!sc || !this._hunks.length) return;
+    const top = sc.getBoundingClientRect().top;
+    const tops = this._hunks
+      .map(i => this._rows[i] ? this._rows[i].getBoundingClientRect().top - top + sc.scrollTop : null)
+      .filter(t => t !== null);
+    if (!tops.length) return;
+    const at = sc.scrollTop;
+    let target = dir > 0 ? tops.find(t => t > at + 8) : tops.slice().reverse().find(t => t < at - 8);
+    if (target == null) target = dir > 0 ? tops[0] : tops[tops.length - 1];
+    sc.scrollTop = Math.max(0, target - 8);
+  }
+
+  _rows = {};
+
+  /* 并排：一段一行，两边同一行高，行号按整份原文连续数（段间空行算进去）。 */
+  splitRows() {
+    let ln = 1;
+    return this.state.blocks.map((b, i) => {
+      const lines = b.src === '' ? [''] : b.src.split('\n');
+      const start = ln;
+      ln += lines.length + 1;
+      return { i: i, block: b, lines: lines, start: start };
+    });
+  }
+
+  splitEl() {
+    const rows = this.splitRows();
+    const hov = this.state.splitHover;
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } }, rows.map((row) => {
+      const on = hov === row.i;
+      const tint = on ? '#F4F1E8' : 'transparent';
+      const left = React.createElement('div', {
+        key: 'l',
+        style: { minWidth: 0, padding: '7px 10px', background: tint, borderRadius: 4, fontFamily: SERIF, fontSize: (this.props.bodySize ?? 18) + 'px', lineHeight: 1.8, color: '#2E2A24', textWrap: 'pretty' }
+      }, this.blockEl(row.block, row.i));
+      const right = React.createElement('div', {
+        key: 'r',
+        style: { minWidth: 0, display: 'flex', flexDirection: 'column', padding: '7px 0', background: tint, borderRadius: 4, borderLeft: '2px solid ' + (on ? '#D8D2C4' : 'transparent') }
+      }, row.lines.map((t, k) => React.createElement('div', {
+        key: k,
+        style: { display: 'grid', gridTemplateColumns: '30px minmax(0,1fr)', alignItems: 'baseline' }
+      }, [
+        React.createElement('span', { key: 'n', style: { fontFamily: MONO, fontSize: 10.5, lineHeight: '1.75', color: '#6E675C', textAlign: 'right', paddingRight: 10, userSelect: 'none' } }, String(row.start + k)),
+        React.createElement('span', { key: 't', style: { fontFamily: MONO, fontSize: 12.5, lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#2E2A24' } }, t)
+      ])));
+      return React.createElement('div', {
+        key: 'sr' + row.block.id,
+        onMouseEnter: () => this.setState({ splitHover: row.i }),
+        onMouseLeave: () => { if (on) this.setState({ splitHover: null }); },
+        onClick: () => this.leaveSplitAt(row.i),
+        style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 18px minmax(0,1fr)', alignItems: 'start', cursor: 'text', borderBottom: '1px solid #F6F3EA' }
+      }, [left, React.createElement('span', { key: 'g' }), right]);
+    }));
+  }
+
+  leaveSplitAt(i) {
+    const b = this.state.blocks[i];
+    if (this.editable(b)) this._pending = { id: b.id, offset: b.src.length };
+    this.setState({ split: false, splitHover: null, cur: i, focused: this.editable(b) });
+  }
+
+  toggleSplit = () => {
+    if (this.state.split) { this.setState({ split: false, splitHover: null, menuOpen: null }); return; }
+    if (this.state.source) {
+      const blocks = this.state.sourceValue.split(/\n{2,}/).map((src, k) => ({ src: src, rev: 0, id: 's' + this.state.seq + '-' + k }));
+      this.setState({ source: false, diff: false, blocks: blocks, seq: this.state.seq + 1, split: true, menuOpen: null, cur: null, focused: false });
+      setTimeout(() => this.setState({ words: this.countWords() }), 0);
+      return;
+    }
+    if (this.state.cur !== null) this.flush(this.state.cur);
+    this.setState({ split: true, menuOpen: null, pop: null, findOpen: false, showWords: false, recentOpen: false, focused: false });
+  };
+
+  componentDidMount() {
+    window.addEventListener('keydown', this.onKey);
+    this.setState({ words: this.countWords() });
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); clearTimeout(this._t); clearTimeout(this._p); }
+  componentDidUpdate() {
+    if (this._pending) {
+      const p = this._pending; this._pending = null;
+      const el = this._els[p.id];
+      if (el) this.setOffset(el, p.offset);
+    }
+  }
+
+  /* ---------- caret helpers ---------- */
+  nodes(el) {
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const a = []; let n;
+    while ((n = w.nextNode())) a.push(n);
+    return a;
+  }
+  getSel(el) {
+    const s = window.getSelection();
+    if (!s || !s.rangeCount) return { start: 0, end: 0 };
+    const r = s.getRangeAt(0);
+    let off = 0, start = 0, end = 0, hitS = false, hitE = false;
+    for (const n of this.nodes(el)) {
+      if (n === r.startContainer) { start = off + r.startOffset; hitS = true; }
+      if (n === r.endContainer) { end = off + r.endOffset; hitE = true; }
+      off += n.textContent.length;
+    }
+    if (!hitS) start = off;
+    if (!hitE) end = start;
+    return { start: start, end: end };
+  }
+  setOffset(el, off) {
+    const ns = this.nodes(el);
+    for (const n of ns) {
+      const L = n.textContent.length;
+      if (off <= L) {
+        const r = document.createRange();
+        r.setStart(n, off); r.collapse(true);
+        const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        el.focus();
+        return;
+      }
+      off -= L;
+    }
+    el.focus();
+  }
+
+  /* ---------- document ---------- */
+  blocks() { return this.state.blocks; }
+  editable(b) { return !/^(```|\||!\[|---$)/.test(b.src); }
+  flush(i) {
+    const b = this.state.blocks[i];
+    if (!b || !this.editable(b)) return;
+    const el = this._els[b.id];
+    if (!el) return;
+    const txt = el.textContent.replace(/\u00a0/g, ' ');
+    if (txt !== b.src) {
+      const next = this.state.blocks.slice();
+      next[i] = { src: txt, rev: b.rev, id: b.id };
+      this.state.blocks = next;
+    }
+  }
+  setBlocks(next, extra) {
+    this.setState(Object.assign({ blocks: next, dirty: true }, extra || {}));
+    clearTimeout(this._w);
+    this._w = setTimeout(() => this.setState({ words: this.countWords() }), 60);
+  }
+  markdown() { return this.state.blocks.map(b => b.src).join('\n\n'); }
+
+  countWords() {
+    const txt = this.markdown().replace(/```[\s\S]*?```/g, ' ').replace(/[#>*`~$|_\-\[\]()!]/g, ' ');
+    const cjk = (txt.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+    const lat = (txt.match(/[A-Za-z0-9][A-Za-z0-9'’]*/g) || []).length;
+    return cjk + lat;
+  }
+  stats() {
+    const md = this.markdown();
+    const plain = md.replace(/[#>*`~$|_\[\]()!]/g, '');
+    const w = this.state.words;
+    return [
+      { label: '字数', value: w.toLocaleString('en-US') },
+      { label: '字符（含空格）', value: plain.replace(/\n/g, '').length.toLocaleString('en-US') },
+      { label: '段落', value: String(this.state.blocks.length) },
+      { label: '行', value: String(md.split('\n').length) },
+      { label: '约读', value: Math.max(1, Math.round(w / 300)) + ' 分钟' }
+    ];
+  }
+
+  /* ---------- inline render ---------- */
+  mark(txt, show, key) {
+    return React.createElement('span', {
+      key: key,
+      style: { fontFamily: MONO, fontSize: '0.86em', fontWeight: 400, color: MARKC, display: show ? 'inline' : 'none' }
+    }, txt);
+  }
+  inline(text, show, bi) {
+    const out = []; let last = 0; let m; INLINE_RX.lastIndex = 0;
+    const hl = this.state.findOpen && this.state.findText;
+    while ((m = INLINE_RX.exec(text))) {
+      if (m.index > last) out.push(this.plain(text.slice(last, m.index), 't' + m.index));
+      const s = m[0]; const k = 'k' + m.index;
+      if (s.slice(0, 2) === '**') {
+        out.push(this.mark('**', show, k + 'a'), React.createElement('strong', { key: k + 'b', style: { fontWeight: 600 } }, s.slice(2, -2)), this.mark('**', show, k + 'c'));
+      } else if (s.slice(0, 2) === '~~') {
+        out.push(this.mark('~~', show, k + 'a'), React.createElement('del', { key: k + 'b', style: { color: '#8A8378' } }, s.slice(2, -2)), this.mark('~~', show, k + 'c'));
+      } else if (s[0] === '`') {
+        out.push(this.mark('`', show, k + 'a'), React.createElement('code', { key: k + 'b', style: { fontFamily: MONO, fontSize: '0.86em', background: '#F4F1E8', padding: '1px 4px', borderRadius: 3 } }, s.slice(1, -1)), this.mark('`', show, k + 'c'));
+      } else if (s[0] === '*') {
+        out.push(this.mark('*', show, k + 'a'), React.createElement('em', { key: k + 'b' }, s.slice(1, -1)), this.mark('*', show, k + 'c'));
+      } else if (s[0] === '[') {
+        const mm = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(s);
+        out.push(
+          this.mark('[', show, k + 'a'),
+          React.createElement('span', {
+            key: k + 'b',
+            style: { color: '#3E5C86', textDecoration: 'underline', textDecorationColor: '#B9C6D8', textUnderlineOffset: '2px', cursor: 'pointer' },
+            onClick: (e) => { e.preventDefault(); if (!this.state.split) this.setState({ pop: { kind: 'link', block: bi, url: mm[2] } }); }
+          }, mm[1]),
+          this.mark('](' + mm[2] + ')', show, k + 'c')
+        );
+      } else {
+        out.push(this.mark('$', show, k + 'a'),
+          React.createElement('span', {
+            key: k + 'b',
+            style: { fontFamily: 'Georgia, serif', fontStyle: 'italic', cursor: 'pointer' },
+            onClick: () => { if (!this.state.split) this.setState({ pop: { kind: 'latex', block: bi, tex: s.slice(1, -1) } }); }
+          }, s.slice(1, -1)),
+          this.mark('$', show, k + 'c'));
+      }
+      last = m.index + s.length;
+    }
+    if (last < text.length) out.push(this.plain(text.slice(last), 'tz'));
+    return out;
+  }
+  plain(txt, key) {
+    const q = this.state.findOpen ? this.state.findText : '';
+    if (!q) return txt;
+    const parts = txt.split(q);
+    if (parts.length === 1) return txt;
+    const out = [];
+    parts.forEach((p, i) => {
+      if (i) out.push(React.createElement('span', { key: key + 'h' + i, style: { background: '#EAE3C9', borderRadius: 2 } }, q));
+      out.push(p);
+    });
+    return React.createElement('span', { key: key }, out);
+  }
+
+  /* ---------- block render ---------- */
+  hang(txt, show) {
+    return React.createElement('span', {
+      key: 'pfx',
+      contentEditable: false,
+      style: {
+        position: 'absolute', left: 0, top: 0, transform: 'translateX(-100%)', paddingRight: 8,
+        fontFamily: MONO, fontSize: '13px', color: MARKC, whiteSpace: 'pre', userSelect: 'none',
+        display: show ? 'block' : 'none'
+      }
+    }, txt);
+  }
+
+  blockEl(b, i) {
+    const st = this.state;
+    const marks = (this.props.sourceMarks ?? true) && st.cur === i && st.focused && !st.composing && !st.findOpen && !st.split;
+    const size = this.props.bodySize ?? 18;
+    const editable = this.editable(b) && !st.findOpen && !st.split;
+    const common = {
+      key: b.id + ':' + b.rev,
+      ref: (el) => { this._els[b.id] = el; },
+      contentEditable: editable,
+      suppressContentEditableWarning: true,
+      spellCheck: false,
+      onFocus: () => this.setState({ cur: i, focused: true, pop: null }),
+      onBlur: () => this.onBlur(i),
+      onInput: () => this.onInput(i),
+      onCompositionStart: () => this.setState({ composing: true }),
+      onCompositionEnd: () => this.setState({ composing: false }),
+      onKeyDown: (e) => this.onBlockKey(e, i)
     };
-    write();
-  }
-  applySeed(force) {
-    const el = this._docEl;
-    if (!el || this._pending == null) return;
-    if (!force && (this._touched || (el.innerHTML && el.innerHTML !== '<p><br></p>'))) return;
-    if (force) this._touched = false;
-    if (el.innerHTML !== this._pending) el.innerHTML = this._pending;
-    const w = this.count(el);
-    if (w !== this.state.words) this.setState({ words: w });
-  }
-  count(el) { return el ? (el.innerText || '').replace(/\s+/g, '').length : 0; }
+    const wrap = (children, style) => React.createElement('div', Object.assign({}, common, {
+      style: Object.assign({ position: 'relative', margin: '0 0 0.85em', outline: 'none' }, style)
+    }), children);
 
-  toast(t) { clearTimeout(this._t); this.setState({ toast: t }); this._t = setTimeout(() => this.setState({ toast: null }), 1800); }
+    const h = /^(#{1,6}) (.*)$/.exec(b.src);
+    if (h) {
+      const lv = h[1].length;
+      const sizes = [1.5, 1.28, 1.13, 1.03, 0.96, 0.92];
+      return wrap([this.hang(h[1] + ' ', marks), this.inline(h[2], marks, i)], {
+        fontSize: sizes[lv - 1] + 'em', fontWeight: 600, lineHeight: 1.34, letterSpacing: '-0.012em', margin: lv === 1 ? '0 0 0.7em' : '1.5em 0 0.6em'
+      });
+    }
+    if (/^> /.test(b.src)) {
+      return wrap([this.hang('> ', marks), this.inline(b.src.slice(2), marks, i)], {
+        paddingLeft: 20, borderLeft: '2px solid #E2DCCE', color: '#5C564C'
+      });
+    }
+    const li = /^(- |\d+\. )(.*)$/.exec(b.src);
+    if (li) {
+      return wrap([
+        this.hang(li[1], marks),
+        React.createElement('span', { key: 'bul', contentEditable: false, style: { position: 'absolute', left: -18, color: '#8A8378', userSelect: 'none', display: marks ? 'none' : 'block' } }, li[1] === '- ' ? '·' : li[1]),
+        this.inline(li[2], marks, i)
+      ], { margin: '0 0 0.42em', paddingLeft: 0 });
+    }
+    if (/^---$/.test(b.src)) {
+      return React.createElement('div', { key: b.id, style: { margin: '1.6em 0', display: 'flex', justifyContent: 'center' } },
+        React.createElement('div', { style: { width: 46, height: 1, background: '#D8D2C4' } }));
+    }
+    if (/^```/.test(b.src)) return this.codeEl(b, i);
+    if (/^\|/.test(b.src)) return this.tableEl(b, i);
+    if (/^!\[/.test(b.src)) return this.imageEl(b, i);
+    return wrap(this.inline(b.src, marks, i), { fontSize: size + 'px' });
+  }
 
+  codeEl(b, i) {
+    const lines = b.src.split('\n');
+    const lang = lines[0].slice(3) || 'text';
+    const body = lines.slice(1, lines[lines.length - 1] === '```' ? -1 : undefined).join('\n');
+    const open = this.state.pop && this.state.pop.kind === 'lang' && this.state.pop.block === i;
+    return React.createElement('div', { key: b.id + ':' + b.rev, style: { position: 'relative', margin: '0 0 1.1em', background: '#F6F3EA', borderRadius: 6, padding: '14px 16px' } }, [
+      this.state.split ? null : React.createElement('button', {
+        key: 'lang',
+        onClick: () => this.setState({ pop: open ? null : { kind: 'lang', block: i } }),
+        style: {
+          position: 'absolute', top: 6, right: 8, border: 'none', background: open ? '#EAE5D8' : 'transparent',
+          borderRadius: 4, padding: '2px 6px', fontFamily: MONO, fontSize: 11, color: '#6E675C', cursor: 'pointer'
+        }
+      }, lang + ' ▾'),
+      React.createElement('pre', { key: 'pre', style: { margin: 0, fontFamily: MONO, fontSize: 13.5, lineHeight: 1.7, color: '#3A352E', whiteSpace: 'pre-wrap' } }, body),
+      open ? this.popShell([
+        React.createElement('div', { key: 'h', style: { padding: '2px 8px 6px', fontFamily: MONO, fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#A39B8E' } }, '语言'),
+        ['markdown', 'text', 'javascript', 'rust', 'css'].map(l => React.createElement('button', {
+          key: l,
+          onClick: () => this.setLang(i, l),
+          style: {
+            display: 'flex', width: '100%', alignItems: 'center', gap: 6, padding: '5px 8px', border: 'none',
+            background: l === lang ? '#F0ECE2' : 'transparent', borderRadius: 4, cursor: 'pointer',
+            fontFamily: MONO, fontSize: 12, color: '#3A352E', textAlign: 'left'
+          }
+        }, l))
+      ], { top: 30, right: 8, width: 150 }) : null
+    ]);
+  }
+  setLang(i, l) {
+    const next = this.state.blocks.slice();
+    const lines = next[i].src.split('\n');
+    lines[0] = '```' + l;
+    next[i] = { src: lines.join('\n'), rev: next[i].rev + 1, id: next[i].id };
+    this.setBlocks(next, { pop: null });
+  }
+
+  tableEl(b, i) {
+    const rows = b.src.split('\n').map(l => l.replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+    const on = this.state.pop && this.state.pop.kind === 'table' && this.state.pop.block === i;
+    return React.createElement('div', {
+      key: b.id + ':' + b.rev,
+      onMouseEnter: () => { if (!this.state.split) this.setState({ pop: { kind: 'table', block: i } }); },
+      onMouseLeave: () => { if (on) this.setState({ pop: null }); },
+      style: { position: 'relative', margin: '0 0 1.2em' }
+    }, [
+      React.createElement('table', { key: 't', style: { borderCollapse: 'collapse', width: '100%', fontSize: 15 } },
+        React.createElement('tbody', null, rows.map((r, ri) => React.createElement('tr', { key: ri }, r.map((c, ci) =>
+          React.createElement(ri === 0 ? 'th' : 'td', {
+            key: ci,
+            style: {
+              textAlign: 'left', padding: '7px 10px', borderBottom: '1px solid ' + (ri === 0 ? '#D8D2C4' : '#F2EEE4'),
+              fontWeight: ri === 0 ? 600 : 400, color: '#2E2A24'
+            }
+          }, c))))) ),
+      React.createElement('div', {
+        key: 'rh',
+        style: { position: 'absolute', left: -14, top: 0, bottom: 0, width: 4, borderRadius: 2, background: '#D8D2C4', opacity: on ? 1 : 0, transition: 'opacity 120ms' }
+      }),
+      React.createElement('div', {
+        key: 'ch',
+        style: { position: 'absolute', top: -12, left: 0, right: 0, height: 4, borderRadius: 2, background: '#D8D2C4', opacity: on ? 1 : 0, transition: 'opacity 120ms' }
+      }),
+      React.createElement('div', {
+        key: 'add',
+        style: { position: 'absolute', right: -16, top: -16, display: on ? 'flex' : 'none', gap: 4 }
+      }, ['＋行', '＋列'].map(t => React.createElement('span', {
+        key: t,
+        style: { padding: '2px 7px', background: '#FDFCF9', border: '1px solid #E2DCCE', borderRadius: 5, boxShadow: '0 6px 20px -8px rgba(40,34,26,0.28)', fontFamily: MONO, fontSize: 10.5, color: '#5C564C', cursor: 'pointer' }
+      }, t)))
+    ]);
+  }
+
+  imageEl(b, i) {
+    const m = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(b.src) || ['', '图片', ''];
+    const fail = this.state.imgFail;
+    const on = this.state.pop && this.state.pop.kind === 'image' && this.state.pop.block === i;
+    if (fail) {
+      return React.createElement('div', { key: b.id + ':f', style: { margin: '0 0 1.2em', padding: '13px 15px', border: '1px dashed #DDD5C4', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 6 } }, [
+        React.createElement('div', { key: 'a', style: { fontFamily: MONO, fontSize: 12.5, color: '#3A352E' } }, b.src),
+        React.createElement('div', { key: 'b', style: { fontSize: 13, color: '#8A8378' } }, '找不到 ' + m[2] + '——原文一个字没改，路径留在这里。')
+      ]);
+    }
+    return React.createElement('div', {
+      key: b.id + ':' + b.rev,
+      onClick: () => { if (!this.state.split) this.setState({ pop: on ? null : { kind: 'image', block: i } }); },
+      style: { position: 'relative', margin: '0 0 1.2em', cursor: this.state.split ? 'text' : 'pointer' }
+    }, [
+      React.createElement('div', {
+        key: 'ph',
+        style: { height: 190, borderRadius: 6, background: 'repeating-linear-gradient(135deg, #F4F1E8 0 10px, #F0ECE2 10px 20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: on ? '0 0 0 2px #D8D2C4' : 'none' }
+      }, React.createElement('span', { style: { fontFamily: MONO, fontSize: 11.5, color: '#A39B8E' } }, m[2])),
+      React.createElement('div', { key: 'cap', style: { marginTop: 7, fontSize: 13, color: '#8A8378' } }, m[1]),
+      on ? this.popShell([
+        React.createElement('div', { key: 'h', style: { padding: '2px 8px 6px', fontFamily: MONO, fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#A39B8E' } }, '图片'),
+        ['正文宽', '出血', '居中小图', '替换…', '移除'].map(t => React.createElement('div', {
+          key: t,
+          style: { padding: '5px 8px', borderRadius: 4, fontSize: 13, color: t === '移除' ? '#8A5C4A' : '#3A352E', cursor: 'pointer', background: t === '正文宽' ? '#F0ECE2' : 'transparent' }
+        }, t))
+      ], { bottom: -8, left: 0, width: 160 }) : null
+    ]);
+  }
+
+  popShell(children, pos) {
+    return React.createElement('div', {
+      key: 'pop',
+      contentEditable: false,
+      style: Object.assign({
+        position: 'absolute', zIndex: 12, padding: 5, background: '#FDFCF9', border: '1px solid #E2DCCE',
+        borderRadius: 6, boxShadow: '0 6px 20px -8px rgba(40,34,26,0.28)', transform: 'translateY(100%)'
+      }, pos)
+    }, children);
+  }
+
+  linkPop(bi) {
+    const p = this.state.pop;
+    return React.createElement('div', {
+      key: 'lp',
+      style: {
+        position: 'absolute', left: 0, top: '100%', marginTop: 8, zIndex: 14, display: 'flex', alignItems: 'center', gap: 10,
+        padding: '6px 10px', background: '#FDFCF9', border: '1px solid #E2DCCE', borderRadius: 6,
+        boxShadow: '0 6px 20px -8px rgba(40,34,26,0.28)'
+      }
+    }, [
+      React.createElement('span', { key: 'u', style: { fontFamily: MONO, fontSize: 11.5, color: '#3E5C86', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, p.url),
+      React.createElement('span', { key: 'e', style: { fontFamily: MONO, fontSize: 11.5, color: '#5C564C', cursor: 'pointer' } }, '编辑'),
+      React.createElement('span', { key: 'r', style: { fontFamily: MONO, fontSize: 11.5, color: '#8A5C4A', cursor: 'pointer' }, onClick: () => this.setState({ pop: null }) }, '移除')
+    ]);
+  }
+  latexPop(bi) {
+    const p = this.state.pop;
+    return React.createElement('div', {
+      key: 'xp',
+      style: {
+        position: 'absolute', left: 0, top: '100%', marginTop: 8, zIndex: 14, display: 'flex', alignItems: 'center', gap: 10,
+        padding: '6px 10px', background: '#FDFCF9', border: '1px solid #E2DCCE', borderRadius: 6,
+        boxShadow: '0 6px 20px -8px rgba(40,34,26,0.28)'
+      }
+    }, [
+      React.createElement('span', { key: 'l', style: { fontFamily: MONO, fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#A39B8E' } }, 'LaTeX'),
+      React.createElement('span', { key: 't', style: { fontFamily: MONO, fontSize: 12.5, color: '#2E2A24' } }, p.tex),
+      React.createElement('span', { key: 'd', style: { fontFamily: MONO, fontSize: 11.5, color: '#5C564C', cursor: 'pointer' }, onClick: () => this.setState({ pop: null }) }, '完成')
+    ]);
+  }
+
+  docEl() {
+    const st = this.state;
+    const items = st.blocks.map((b, i) => {
+      const el = this.blockEl(b, i);
+      const p = st.pop;
+      if (p && p.block === i && (p.kind === 'link' || p.kind === 'latex')) {
+        return React.createElement('div', { key: 'w' + b.id, style: { position: 'relative' } }, [el, p.kind === 'link' ? this.linkPop(i) : this.latexPop(i)]);
+      }
+      return el;
+    });
+    return React.createElement('div', {
+      style: { fontFamily: SERIF, fontSize: (this.props.bodySize ?? 18) + 'px', lineHeight: 1.8, color: '#2E2A24', textWrap: 'pretty' }
+    }, items);
+  }
+
+  /* ---------- editing ---------- */
+  onInput(i) {
+    this.flush(i);
+    if (!this.state.composing) {
+      clearTimeout(this._w);
+      this._w = setTimeout(() => this.setState({ words: this.countWords() }), 120);
+    }
+    if (!this.state.dirty) this.setState({ dirty: true });
+  }
+  onBlur(i) {
+    this.flush(i);
+    const next = this.state.blocks.slice();
+    next[i] = { src: next[i].src, rev: next[i].rev + 1, id: next[i].id };
+    this.setState({ blocks: next, focused: false, words: this.countWords() });
+  }
+  onBlockKey(e, i) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey) {
+      e.preventDefault();
+      this.flush(i);
+      const el = this._els[this.state.blocks[i].id];
+      const off = this.getSel(el).start;
+      const src = this.state.blocks[i].src;
+      const head = src.slice(0, off), tail = src.slice(off);
+      const pfx = /^(- |\d+\. |> )/.exec(src);
+      const next = this.state.blocks.slice();
+      const id = 'n' + this.state.seq;
+      next.splice(i, 1, { src: head, rev: next[i].rev + 1, id: next[i].id }, { src: (pfx && head.length > pfx[1].length ? pfx[1] : '') + tail, rev: 0, id: id });
+      this._pending = { id: id, offset: pfx && head.length > pfx[1].length ? pfx[1].length : 0 };
+      this.setBlocks(next, { seq: this.state.seq + 1, cur: i + 1 });
+      return;
+    }
+    if (e.key === 'Backspace' && i > 0) {
+      this.flush(i);
+      const el = this._els[this.state.blocks[i].id];
+      const s = this.getSel(el);
+      if (s.start === 0 && s.end === 0) {
+        e.preventDefault();
+        const prev = this.state.blocks[i - 1];
+        if (!this.editable(prev)) return;
+        const next = this.state.blocks.slice();
+        next[i - 1] = { src: prev.src + this.state.blocks[i].src, rev: prev.rev + 1, id: prev.id };
+        next.splice(i, 1);
+        this._pending = { id: prev.id, offset: prev.src.length };
+        this.setBlocks(next, { cur: i - 1 });
+      }
+    }
+  }
+
+  applyCmd(id) {
+    this.setState({ menuOpen: null });
+    const fmt = FORMAT.find(f => f.id === id);
+    const par = PARA.find(p => p.id === id);
+    let i = this.state.cur;
+    if (i === null || !this.state.blocks[i]) i = this.state.blocks.length - 1;
+    if (par && par.insert) {
+      const next = this.state.blocks.slice();
+      const nid = 'n' + this.state.seq;
+      next.splice(i + 1, 0, { src: par.insert, rev: 0, id: nid });
+      this.setBlocks(next, { seq: this.state.seq + 1, pop: null });
+      this.toast('插入' + par.label);
+      return;
+    }
+    if (!this.editable(this.state.blocks[i])) { this.toast('把光标放到一段文字里'); return; }
+    this.flush(i);
+    const b = this.state.blocks[i];
+    const el = this._els[b.id];
+    const sel = el && document.activeElement === el ? this.getSel(el) : { start: b.src.length, end: b.src.length };
+    let src = b.src, caret = sel.start;
+    if (fmt) {
+      const w = fmt.link ? null : fmt.wrap;
+      if (fmt.link) {
+        const txt = src.slice(sel.start, sel.end) || '链接文字';
+        src = src.slice(0, sel.start) + '[' + txt + '](https://)' + src.slice(sel.end);
+        caret = sel.start + txt.length + 3;
+      } else {
+        const txt = src.slice(sel.start, sel.end);
+        src = src.slice(0, sel.start) + w + (txt || '文字') + w + src.slice(sel.end);
+        caret = sel.start + w.length + (txt || '文字').length;
+      }
+    } else if (par) {
+      const m = PREFIX_RX.exec(src);
+      const body = m ? src.slice(m[1].length) : src;
+      src = par.prefix + body;
+      caret = Math.max(par.prefix.length, caret + par.prefix.length - (m ? m[1].length : 0));
+    }
+    const next = this.state.blocks.slice();
+    next[i] = { src: src, rev: b.rev + 1, id: b.id };
+    this._pending = { id: b.id, offset: caret };
+    this.setBlocks(next, { cur: i, focused: true, pop: null });
+  }
+
+  /* ---------- chrome actions ---------- */
+  toast(text, action, ms) {
+    clearTimeout(this._t);
+    this.setState({ toast: { text: text, action: action || null } });
+    this._t = setTimeout(() => this.setState({ toast: null }), ms || 2000);
+  }
   save = () => {
+    const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    this._disk = this.currentText();
+    this._diskAt = '今天 ' + now;
     if (this.state.fileIdx === null) { this.setState({ fileIdx: 0, dirty: false }); this.toast('已保存到 ' + FILES[0].path); return; }
     this.setState({ dirty: false });
-    this.toast('已保存 · ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
+    this.toast('已保存 · ' + now);
   };
-  newDoc = () => { this.setState({ fileIdx: null, dirty: false, recentOpen: false }); this.seed(null); this.toast('新文档'); };
-  openFile = (i) => { this.setState({ fileIdx: i, dirty: false, recentOpen: false, sel: 0 }); this.seed(FILES[i].title); };
+  newDoc = () => {
+    this.setState({ fileIdx: null, dirty: false, recentOpen: false, cur: null, focused: false, blocks: [{ src: '', rev: 0, id: 'n' + this.state.seq }], seq: this.state.seq + 1, words: 0, pop: null, source: false, diff: false, split: false, splitHover: null });
+  };
+  openFile = (i) => {
+    if (i === this.state.fileIdx) {
+      this.setState({ recentOpen: false, pulse: true });
+      clearTimeout(this._p);
+      this._p = setTimeout(() => this.setState({ pulse: false }), 560);
+      this.toast('这个文件已经在这个窗口开着');
+      return;
+    }
+    const blocks = FILES[i].body.split(/\n{2,}/).map((src, k) => ({ src: src, rev: 0, id: 'f' + i + '-' + k }));
+    this._disk = i === 0 ? DISK1 : FILES[i].body;
+    this._diskAt = i === 0 ? '今天 14:02' : FILES[i].meta;
+    this.setState({ fileIdx: i, dirty: false, recentOpen: false, sel: i, blocks: blocks, cur: null, focused: false, pop: null, source: false, diff: false, split: false, splitHover: null, findOpen: false, imgFail: false });
+    setTimeout(() => this.setState({ words: this.countWords() }), 0);
+  };
+  exitSource = () => {
+    const blocks = this.state.sourceValue.split(/\n{2,}/).map((src, k) => ({ src: src, rev: 0, id: 's' + this.state.seq + '-' + k }));
+    this.setState({ source: false, diff: false, blocks: blocks, seq: this.state.seq + 1, menuOpen: null, cur: null, focused: false });
+    setTimeout(() => this.setState({ words: this.countWords() }), 0);
+  };
+  /* 对照 = 源码模式的第二种版式，不是另一个页面：⌘/ 与 ⇧⌘/ 之间只换版式。 */
+  toggleDiff = () => {
+    if (this.state.source && this.state.diff) { this.exitSource(); return; }
+    if (this.state.source) { this.setState({ diff: true, menuOpen: null }); return; }
+    if (this.state.cur !== null) this.flush(this.state.cur);
+    this.setState({ source: true, diff: true, split: false, splitHover: null, sourceValue: this.markdown(), menuOpen: null, pop: null, findOpen: false, showWords: false, recentOpen: false });
+  };
+  toggleSource = () => {
+    if (this.state.source && this.state.diff) { this.setState({ diff: false, menuOpen: null }); return; }
+    if (this.state.source) {
+      this.exitSource();
+    } else {
+      if (this.state.cur !== null) this.flush(this.state.cur);
+      this.setState({ source: true, split: false, splitHover: null, sourceValue: this.markdown(), menuOpen: null, pop: null, findOpen: false, showWords: false, recentOpen: false });
+    }
+  };
+  openFind = () => {
+    if (this.state.cur !== null) this.flush(this.state.cur);
+    this.setState({ findOpen: true, menuOpen: null, pop: null, source: false, showWords: false, recentOpen: false });
+    setTimeout(() => { if (this._find) this._find.focus(); }, 30);
+  };
+  replaceAll = () => {
+    const q = this.state.findText;
+    if (!q) return;
+    let n = 0;
+    const next = this.state.blocks.map(b => {
+      if (b.src.indexOf(q) < 0) return b;
+      n += b.src.split(q).length - 1;
+      return { src: b.src.split(q).join(this.state.replaceText), rev: b.rev + 1, id: b.id };
+    });
+    this.setBlocks(next, { findText: '' });
+    this.toast('替换了 ' + n + ' 处');
+  };
+  findCount() {
+    const q = this.state.findText;
+    if (!q) return '';
+    const n = this.markdown().split(q).length - 1;
+    return n ? '共 ' + n + ' 处' : '没有找到';
+  }
+
+  askConflict = () => {
+    this.setState({
+      menuOpen: null,
+      confirm: {
+        title: '磁盘上的这个文件变了',
+        body: FILES[Math.max(0, this.state.fileIdx || 0)].name + ' 在别处被改过。覆盖会丢掉那边的改动。',
+        actions: [
+          { label: '取消', key: 'esc', kind: 'ghost', run: () => this.setState({ confirm: null }) },
+          { label: '覆盖', key: '⌘D', kind: 'danger', run: () => { this.setState({ confirm: null, dirty: false }); this.toast('已覆盖磁盘上的版本'); } },
+          { label: '另存为…', key: '⏎', kind: 'primary', run: () => { this.setState({ confirm: null, dirty: false }); this.toast('已另存为 副本 2.md'); } }
+        ]
+      }
+    });
+  };
+  restoreDraft = () => {
+    this.setState({ menuOpen: null, dirty: true });
+    this.toast('恢复了上次没保存完的草稿', { label: '不用了', run: () => { this.setState({ toast: null, dirty: false }); } }, 6000);
+  };
+  fakeDrop = () => {
+    this.setState({ dragging: true });
+    setTimeout(() => { this.setState({ dragging: false }); this.openFile(2); this.toast('打开了 会议记录 0904.md'); }, 900);
+  };
 
   onKey = (e) => {
-    const open = this.state.recentOpen;
-    if (open && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === 'Escape')) {
+    const st = this.state;
+    if (st.confirm) {
+      const acts = st.confirm.actions;
+      if (e.key === 'Escape') { e.preventDefault(); acts[0].run(); }
+      else if (e.key === 'Enter') { e.preventDefault(); acts[acts.length - 1].run(); }
+      else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') { e.preventDefault(); acts[1].run(); }
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (st.findOpen || st.recentOpen || st.showWords || st.menuOpen !== null || st.pop) {
+        e.preventDefault();
+        this.setState({ findOpen: false, recentOpen: false, showWords: false, menuOpen: null, pop: null });
+        return;
+      }
+      if (st.split) { e.preventDefault(); this.setState({ split: false, splitHover: null }); return; }
+      if (st.source) { e.preventDefault(); this.exitSource(); }
+      return;
+    }
+    if (st.diff && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       e.preventDefault();
-      if (e.key === 'Escape') this.setState({ recentOpen: false });
-      else if (e.key === 'ArrowDown') this.setState(s => ({ sel: Math.min(s.sel + 1, FILES.length - 1) }));
-      else if (e.key === 'ArrowUp') this.setState(s => ({ sel: Math.max(s.sel - 1, 0) }));
-      else this.openFile(this.state.sel);
+      this.jumpHunk(e.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+    if (st.recentOpen && ['ArrowDown', 'ArrowUp', 'Enter'].indexOf(e.key) >= 0) {
+      e.preventDefault();
+      if (e.key === 'Enter') this.openFile(st.sel);
+      else this.setState({ sel: Math.min(FILES.length - 1, Math.max(0, st.sel + (e.key === 'ArrowDown' ? 1 : -1))) });
       return;
     }
     if (!(e.metaKey || e.ctrlKey)) return;
     const k = e.key.toLowerCase();
-    if (k === 's') { e.preventDefault(); this.save(); }
-    else if (k === 'n') { e.preventDefault(); this.newDoc(); }
-    else if (k === 'o') { e.preventDefault(); this.setState(s => ({ recentOpen: !s.recentOpen, sel: 0 })); }
-    else if (/^[1-4]$/.test(e.key)) { e.preventDefault(); this.openFile(Number(e.key) - 1); }
+    const alt = e.altKey, shift = e.shiftKey;
+    const hit = (fn) => { e.preventDefault(); fn(); };
+    if (k === 's') return hit(this.save);
+    if (k === 'n') return hit(this.newDoc);
+    if (k === '/' && alt) return hit(this.toggleSplit);
+    if (k === '÷') return hit(this.toggleSplit);
+    if (k === '?' || (k === '/' && shift)) return hit(this.toggleDiff);
+    if (k === '/') return hit(this.toggleSource);
+    if (k === 'f') return hit(this.openFind);
+    if (k === 'o' && !alt) return hit(() => this.setState({ recentOpen: !st.recentOpen, sel: st.fileIdx === null ? 0 : st.fileIdx, showWords: false }));
+    if (st.source) return;
+    if (alt) {
+      if (k === 'u') return hit(() => this.applyCmd('ul'));
+      if (k === 'o') return hit(() => this.applyCmd('ol'));
+      if (k === 'q') return hit(() => this.applyCmd('quote'));
+      if (k === 'c') return hit(() => this.applyCmd('codeblock'));
+      if (k === 't') return hit(() => this.applyCmd('table'));
+      if (k === '-' || k === '–') return hit(() => this.applyCmd('hr'));
+      return;
+    }
+    if (shift && k === 'x') return hit(() => this.applyCmd('strike'));
+    if (shift && (k === '`' || k === '~')) return hit(() => this.applyCmd('code'));
+    if (k === 'b') return hit(() => this.applyCmd('bold'));
+    if (k === 'i') return hit(() => this.applyCmd('italic'));
+    if (k === 'k') return hit(() => this.applyCmd('link'));
+    if (/^[0-6]$/.test(e.key)) return hit(() => this.applyCmd(e.key === '0' ? 'p' : 'h' + e.key));
   };
 
-  onInput = () => { this._touched = true; this.setState({ dirty: true, words: this.count(this._docEl) }); };
+  /* ---------- menus ---------- */
+  menuDefs() {
+    return [
+      { label: '文件', x: 84, items: [
+        { label: '新建', key: '⌘N', run: this.newDoc },
+        { label: '打开…', key: '⌘O', run: () => this.setState({ recentOpen: true, menuOpen: null, sel: 0 }) },
+        { label: '保存', key: '⌘S', run: this.save },
+        { sep: true },
+        { label: '模拟外部改动后保存', key: '', run: this.askConflict }
+      ] },
+      { label: '编辑', x: 132, items: [
+        { label: '撤销', key: '⌘Z', run: () => this.toast('撤销') },
+        { label: '重做', key: '⇧⌘Z', run: () => this.toast('重做') },
+        { sep: true },
+        { label: '查找与替换', key: '⌘F', run: this.openFind }
+      ] },
+      { label: '格式', x: 180, items: FORMAT.map(f => ({ label: f.label, key: f.key, run: () => this.applyCmd(f.id) })) },
+      { label: '段落', x: 228, items: PARA.map(p => ({ label: p.label, key: p.key, run: () => this.applyCmd(p.id) })) },
+      { label: '视图', x: 276, items: [
+        { label: '只看原文', key: '⌘/', check: this.state.source && !this.state.diff, run: this.toggleSource },
+        { label: '排版与原文并排', key: '⌥⌘/', check: this.state.split, run: this.toggleSplit },
+        { label: '磁盘与当前对照', key: '⇧⌘/', check: this.state.diff, run: this.toggleDiff },
+        { sep: true },
+        { label: '恢复上次草稿', key: '', run: this.restoreDraft }
+      ] }
+    ];
+  }
 
   renderVals() {
-    const measure = this.props.measure ?? 66;
-    const bodySize = this.props.bodySize ?? 18;
-    const dirtyMark = this.props.dirtyMark ?? '*';
-    const file = this.state.fileIdx === null ? null : FILES[this.state.fileIdx];
-    const empty = file === null && this.state.words === 0;
+    const st = this.state;
+    const defs = this.menuDefs();
+    const openIdx = st.menuOpen;
+    const file = st.fileIdx === null ? null : FILES[st.fileIdx];
+    const dirtyStyle = this.props.dirtyMark ?? '圆点';
+    const empty = st.blocks.length === 1 && st.blocks[0].src === '' && !st.source;
+    const hints = (this.props.emptyHints ?? true) && empty;
 
-    const rowStyle = {
-      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 20,
-      padding: '11px 0', border: 'none', borderBottom: '1px solid #F2EEE4', background: 'transparent',
-      cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: '#2E2A24'
-    };
+    return {
+      menus: defs.map((m, i) => ({
+        label: m.label,
+        bg: openIdx === i ? '#EFEBE1' : 'transparent',
+        ref: (el) => { this._mb[i] = el; },
+        click: () => this.setState({ menuOpen: openIdx === i ? null : i, showWords: false, recentOpen: false }),
+        enter: () => { if (openIdx !== null && openIdx !== i) this.setState({ menuOpen: i }); }
+      })),
+      menuOpen: openIdx !== null,
+      menuX: openIdx === null ? 0 : (this._mb[openIdx] ? this._mb[openIdx].offsetLeft : defs[openIdx].x),
+      menuItems: openIdx === null ? [] : defs[openIdx].items.map((it, k) => it.sep
+        ? { label: '', key: '', check: '', h: 7, bg: 'transparent', color: 'transparent', cursor: 'default', click: () => {} }
+        : { label: it.label, key: it.key || '', check: it.check ? '✓' : '', h: 26, bg: 'transparent', color: '#3A352E', cursor: 'pointer', click: it.run }),
+      closeMenu: () => this.setState({ menuOpen: null }),
 
-    const decorate = (f, i) => {
-      const on = i === this.state.sel;
-      return {
+      fileName: file ? file.name : '未命名',
+      dirtyDot: st.dirty && dirtyStyle === '圆点',
+      dirtyText: st.dirty && dirtyStyle !== '圆点',
+      dirtyLabel: dirtyStyle === '星号' ? '*' : '未保存',
+      titleBg: st.recentOpen ? '#F0ECE2' : 'transparent',
+      titleRing: st.recentOpen ? 'inset 0 0 0 1.5px #8A8378' : 'none',
+      toggleRecent: () => this.setState({ recentOpen: !st.recentOpen, sel: st.fileIdx === null ? 0 : st.fileIdx, showWords: false, menuOpen: null }),
+
+      wordsLabel: st.words.toLocaleString('en-US') + ' 字',
+      wordsBg: st.showWords ? '#F0ECE2' : 'transparent',
+      toggleWords: () => this.setState({ showWords: !st.showWords, recentOpen: false, menuOpen: null }),
+      showWords: st.showWords,
+      closeWords: () => this.setState({ showWords: false }),
+      stats: this.stats(),
+
+      source: st.source || st.split,
+      badgeText: st.split ? '并排' : (st.diff ? '对照' : '原文'),
+      diffView: st.source && st.diff,
+      splitView: st.split,
+      pageView: !(st.source && st.diff) && !st.split,
+      splitTally: st.blocks.length + ' 段 · ' + this.markdown().split('\n').length + ' 行',
+      splitEl: st.split ? this.splitEl() : null,
+      toDiffFromSplit: () => { this.setState({ split: false, splitHover: null }); setTimeout(this.toggleDiff, 0); },
+      singleSource: st.source && !st.diff,
+      prose: !st.source,
+      diskLabel: this._diskAt,
+      diffTally: (() => {
+        const d = lineDiff(this._disk, this.currentText());
+        const a = d.filter(x => x.kind === 'added').length;
+        const r = d.filter(x => x.kind === 'removed').length;
+        return a || r ? '+' + a + ' −' + r : '没有改动';
+      })(),
+      diffEl: st.source && st.diff ? this.diffEl() : null,
+      diffScrollRef: (el) => { this._diffScroll = el; },
+      nextHunk: () => this.jumpHunk(1),
+      prevHunk: () => this.jumpHunk(-1),
+      save: this.save,
+      sourceValue: st.sourceValue,
+      onSourceInput: (e) => this.setState({ sourceValue: e.target.value, dirty: true }),
+      docEl: this.docEl(),
+
+      focusDoc: (e) => {
+        if (st.source || st.findOpen) return;
+        const t = e.target;
+        if (t.closest && (t.closest('[contenteditable=true]') || t.closest('button') || t.closest('table'))) return;
+        const idx = st.blocks.map((b, i) => this.editable(b) ? i : -1).filter(i => i >= 0).pop();
+        if (idx == null) return;
+        const el = this._els[st.blocks[idx].id];
+        if (!el) return;
+        e.preventDefault();
+        this.setState({ cur: idx, focused: true });
+        this.setOffset(el, st.blocks[idx].src.length);
+      },
+      showEmpty: empty,
+      hints: hints,
+      hintList: HINTS,
+
+      findOpen: st.findOpen,
+      findText: st.findText,
+      replaceText: st.replaceText,
+      findCount: this.findCount(),
+      findRef: (el) => { this._find = el; },
+      onFind: (e) => this.setState({ findText: e.target.value }),
+      onReplace: (e) => this.setState({ replaceText: e.target.value }),
+      doReplaceAll: this.replaceAll,
+      closeFind: () => this.setState({ findOpen: false, findText: '' }),
+
+      showRecent: st.recentOpen,
+      closeRecent: () => this.setState({ recentOpen: false }),
+      recent: FILES.map((f, i) => ({
         name: f.name, meta: f.meta,
         open: () => this.openFile(i),
         hover: () => this.setState({ sel: i }),
-        rowStyle,
-        panelRowStyle: {
+        rowStyle: {
           display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, width: '100%',
-          padding: '7px 12px', borderRadius: 5, border: 'none', cursor: 'pointer', textAlign: 'left',
-          background: on ? '#F0ECE2' : 'transparent', fontFamily: 'inherit'
-        },
-        panelNameStyle: { fontSize: 14, color: on ? '#2E2A24' : '#555047' }
-      };
-    };
+          padding: '7px 10px', borderRadius: 5, border: 'none', cursor: 'pointer', textAlign: 'left',
+          background: i === st.sel ? '#F0ECE2' : 'transparent', fontFamily: SERIF
+        }
+      })),
 
-    return {
-      measure, bodySize,
-      showMotion: this.props.showMotion ?? true,
-      dropPreview: this.props.dropPreview ?? true,
-      sheetStyle: { width: '100%', maxWidth: measure + 'ch', display: 'flex', flexDirection: 'column' },
-      proseStyle: {
-        fontFamily: "'Source Serif 4', 'Songti SC', serif", fontSize: bodySize + 'px',
-        lineHeight: 1.8, color: '#2E2A24', paddingBottom: 60, minHeight: empty ? 0 : 40, textWrap: 'pretty'
-      },
-      titleBtn: {
-        display: 'flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 4, border: 'none',
-        background: this.state.recentOpen ? '#F0ECE2' : 'transparent', cursor: 'pointer', color: '#3A352E', fontFamily: 'inherit'
-      },
-      fileNameStar: (file ? file.name : '未命名') + (this.state.dirty ? ' ' + dirtyMark : ''),
-      words: this.state.words,
-      editable: true, onInput: this.onInput, docRef: this.docRef,
-      showEmpty: empty,
-      recent: FILES.map(decorate),
-      showRecent: this.state.recentOpen,
-      closeRecent: () => this.setState({ recentOpen: false }),
-      toggleRecent: () => this.setState(s => ({ recentOpen: !s.recentOpen, sel: 0 })),
-      showToast: !!this.state.toast, toastText: this.state.toast || ''
+      dragging: st.dragging,
+      onDragOver: (e) => { e.preventDefault(); if (!st.dragging) this.setState({ dragging: true }); },
+      onDragLeave: () => this.setState({ dragging: false }),
+      onDrop: (e) => { e.preventDefault(); this.setState({ dragging: false }); this.openFile(2); this.toast('打开了 会议记录 0904.md'); },
+
+      confirmOpen: !!st.confirm,
+      confirmTitle: st.confirm ? st.confirm.title : '',
+      confirmBody: st.confirm ? st.confirm.body : '',
+      confirmActions: st.confirm ? st.confirm.actions.map(a => ({
+        label: a.label, key: a.key, click: a.run,
+        style: {
+          border: '1px solid ' + (a.kind === 'primary' ? '#C7BFAC' : '#E2DCCE'),
+          background: a.kind === 'primary' ? '#EFEADC' : 'transparent',
+          borderRadius: 6, padding: '6px 13px', cursor: 'pointer', fontFamily: SERIF, fontSize: 14,
+          color: a.kind === 'danger' ? '#8A5C4A' : '#3A352E'
+        }
+      })) : [],
+
+      pulse: st.pulse,
+      toastOn: !!st.toast,
+      toastText: st.toast ? st.toast.text : '',
+      toastHasAction: !!(st.toast && st.toast.action),
+      toastActionLabel: st.toast && st.toast.action ? st.toast.action.label : '',
+      toastAction: st.toast && st.toast.action ? st.toast.action.run : () => {},
+
+      demos: [
+        { label: '保存时撞上外部改动', click: this.askConflict },
+        { label: '打开已经开着的文件', click: () => this.openFile(st.fileIdx === null ? 0 : st.fileIdx) },
+        { label: '恢复上次草稿', click: this.restoreDraft },
+        { label: st.imgFail ? '让图片加载成功' : '让图片加载失败', click: () => this.setState({ imgFail: !st.imgFail, pop: null }) },
+        { label: '拖一个文件进来', click: this.fakeDrop }
+      ]
     };
   }
 }
+
 </script>
 </body>
 </html>

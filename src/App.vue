@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import CompareView from './components/CompareView.vue'
 import ConfirmLayer from './components/ConfirmLayer.vue'
 import DiffView from './components/DiffView.vue'
 import RecentPanel from './components/RecentPanel.vue'
@@ -17,6 +18,7 @@ import { tauriWindows } from './windows/windows'
 import { planBoot } from './workspace/boot'
 import { createDrafts } from './workspace/drafts'
 import { describeDrop, type DropHint } from './workspace/drag-drop'
+import { STARTER_HINTS } from './workspace/starter-hints'
 import { type Intent, intentOf, type Mode } from './workspace/keymap'
 import { useConfirm } from './workspace/use-confirm'
 import { createWorkspace } from './workspace/workspace'
@@ -49,11 +51,19 @@ const drop = ref<DropHint | null>(null)
 /** 谁在前台，决定同一个按键落到哪套语义上。 */
 const mode = computed<Mode>(() => {
   if (confirm.question.value !== null) return 'confirm'
+  if (workspace.compareOpen.value) return 'compare'
   if (workspace.diffOpen.value) return 'diff'
   if (workspace.recentOpen.value) return 'recent'
   if (workspace.findOpen.value) return 'find'
   return 'writing'
 })
+
+/** 对照视图两栏的抬头与标题，两种对照只有这几个字不同。 */
+const compare = computed(() =>
+  workspace.compareKind.value === 'plain'
+    ? { title: '原文对照', leftHead: '排版', rightHead: 'Markdown 原文' }
+    : { title: '磁盘对照', leftHead: '磁盘上那份', rightHead: '当前这份' }
+)
 
 const emptyStateFiles = computed(() =>
   workspace.recentList.value
@@ -170,17 +180,19 @@ onBeforeUnmount(async () => {
       :words="workspace.words.value"
       :recent-open="workspace.recentOpen.value"
       :source-mode="workspace.sourceMode.value"
+      :stats-open="workspace.wordStatsOpen.value"
+      :stats="workspace.wordStats.value"
       @toggle-recent="workspace.toggleRecent()"
+      @toggle-stats="workspace.toggleWordStats()"
     />
 
     <div class="canvas">
       <div class="sheet">
-        <div
-          v-if="workspace.showEmptyState.value && emptyStateFiles.length > 0"
-          class="empty-state"
-        >
-          <div class="label">最近文件</div>
-          <div class="rows">
+        <div v-if="workspace.showEmptyState.value" class="empty-state">
+          <!-- 空文档的纸上什么都没有，人不知道能干什么。这一行说清两条路。 -->
+          <p class="hint">直接开始写，或按 <kbd>⌘O</kbd> 打开最近文件。</p>
+          <div v-if="emptyStateFiles.length > 0" class="label">最近文件</div>
+          <div v-if="emptyStateFiles.length > 0" class="rows">
             <button
               v-for="file in emptyStateFiles"
               :key="file.path"
@@ -191,6 +203,20 @@ onBeforeUnmount(async () => {
               <span class="meta">{{ file.dir }} · {{ file.when }}</span>
             </button>
           </div>
+          <!--
+            没有工具栏，排版命令全在菜单里（ADR 0013）——没翻过菜单的人不知道
+            它们在那儿。这张便条列几条最常用的，打第一个字就走。
+          -->
+          <div class="label starter-label">用得最多的几条</div>
+          <div class="starter">
+            <div v-for="hint in STARTER_HINTS" :key="hint.id" class="starter-row">
+              <span>{{ hint.label }}</span>
+              <kbd>{{ hint.key }}</kbd>
+            </div>
+          </div>
+          <p class="starter-note">
+            余下的都在菜单栏的「格式」与「段落」里。打第一个字，这张便条就走。
+          </p>
         </div>
         <!-- 两个持有方只有一个在场，但编辑器的挂载点要一直留着（ADR 0009）。 -->
         <div v-show="!workspace.sourceMode.value" ref="host" class="milktown-editor" />
@@ -199,6 +225,7 @@ onBeforeUnmount(async () => {
           :text="workspace.sourceText.value"
           :find-open="workspace.findOpen.value"
           @edit="workspace.editSource($event)"
+          @composing="workspace.setComposing($event)"
         />
       </div>
     </div>
@@ -223,6 +250,16 @@ onBeforeUnmount(async () => {
       @select="workspace.selectVersion($event)"
       @restore="workspace.restoreVersion()"
       @close="workspace.diffOpen.value = false"
+    />
+
+    <CompareView
+      v-if="workspace.compareOpen.value"
+      :title="compare.title"
+      :note="workspace.compareNote.value"
+      :rows="workspace.compareRows.value"
+      :left-head="compare.leftHead"
+      :right-head="compare.rightHead"
+      @close="workspace.closeCompare()"
     />
 
     <ConfirmLayer
@@ -264,6 +301,17 @@ onBeforeUnmount(async () => {
   padding-bottom: 26px;
 }
 
+.empty-state .hint {
+  margin: 0 0 26px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.empty-state kbd {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
 .empty-state .label {
   font-family: var(--mono);
   font-size: 10px;
@@ -301,6 +349,32 @@ onBeforeUnmount(async () => {
   font-size: 11px;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.empty-state .starter-label {
+  margin-top: 30px;
+}
+
+.empty-state .starter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 40px;
+}
+
+.empty-state .starter-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.empty-state .starter-note {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
 }
 
 /* 拖拽悬停：整窗蒙上一层纸色，连标题栏一起（2c）。不画边框、不画虚线。 */

@@ -6,12 +6,20 @@ import type { DiffLine } from '../history/line-diff'
 import { lineDiff } from '../history/line-diff'
 import type { History, Version } from '../history/version-store'
 import type { RecentFile, RecentFiles } from '../recent/recent-files'
-import type { WindowsPort } from '../windows/windows'
+import type { ViewName, WindowsPort } from '../windows/windows'
 import type { Draft, Drafts } from './drafts'
+import { isFormatCommand } from '../editor/format'
+import type { CompareRow } from './compare'
+import { describeChanges, diskRows, plainRows } from './compare'
+import type { WordStats } from './word-count'
+import { countStats } from './word-count'
 import type { Intent } from './keymap'
 
 /** 三选一确认的结果。系统对话框只有两个按钮，所以这个由应用自绘。 */
 export type ConfirmChoice = 'save' | 'discard' | 'cancel'
+
+/** 哪一种对照。两者共用同一个外壳，只有两栏的来源不同（ADR 0015）。 */
+export type CompareKind = 'plain' | 'disk'
 
 export interface WorkspaceDeps {
   files: FileService
@@ -43,13 +51,31 @@ export function createWorkspace(deps: WorkspaceDeps) {
   const currentPath = ref<string | null>(null)
   const dirty = ref(false)
   const words = ref(0)
+  /** 输入法合成中。期间字数不更新，合成结束时补一次。 */
+  const composing = ref(false)
+  let pendingCount: string | null = null
   const toast = ref('')
   const saving = ref(false)
   const now = ref(deps.now().getTime())
 
+  /** 字数点开的那份口径面板。数字是节流出来的，这几个数是点开那一刻现算的。 */
+  const wordStatsOpen = ref(false)
+  const wordStats = ref<WordStats>(countStats(''))
+
   const recentList = ref<RecentFile[]>([])
   const recentOpen = ref(false)
   const recentIndex = ref(0)
+
+  /**
+   * 原文对照与磁盘对照。两栏都是进入那一刻取的快照，只读，退出即丢弃；
+   * 编辑器一直在底下活着，所以进出一趟不改动文档（ADR 0015）。
+   */
+  const compareOpen = ref(false)
+  const compareKind = ref<CompareKind>('plain')
+  const compareRows = ref<CompareRow[]>([])
+  const compareNote = ref('')
+  /** 进入时光标所在的块，退出时照它回来。 */
+  let compareBlock = 0
 
   const diffOpen = ref(false)
   const versions = ref<Version[]>([])
@@ -85,9 +111,24 @@ export function createWorkspace(deps: WorkspaceDeps) {
    * 字数口径：原文字符数，去掉首尾空白（ADR 0009）。两个模式数的是同一个
    * 东西，⌘/ 前后不跳变。ADR 里的 300ms 节流是为了挡住「为了数字数而序列化
    * 一次文档」，这里的 markdown 是编辑器变更事件顺手带来的，没有那笔开销。
+   *
+   * 输入法合成期间不数：一串拼音每敲一个字母都会进来一次，数字跟着跳，
+   * 而那串字母根本还不是文档（ADR 0014 同一条规矩）。攒着，合成结束再数。
    */
   function recount(markdown: string) {
+    if (composing.value) {
+      pendingCount = markdown
+      return
+    }
     words.value = markdown.trim().length
+  }
+
+  /** 输入法合成的起止。两个真相源持有方都往这里报。 */
+  function setComposing(next: boolean) {
+    composing.value = next
+    if (next || pendingCount === null) return
+    words.value = pendingCount.trim().length
+    pendingCount = null
   }
 
   function flash(text: string, ms = 1800) {
@@ -118,6 +159,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     root.innerHTML = ''
 
     const instance = await deps.mountEditor(root, markdown)
+    instance.onComposition(setComposing)
     recount(instance.read())
     instance.onChange((next) => {
       dirty.value = true
@@ -132,6 +174,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
    */
   async function toggleSourceMode() {
     if (busy()) return
+    // 互斥组：从对照视图直接切过来，先把对照关掉（ADR 0015）。
+    closeCompare()
     if (sourceMode.value) {
       const text = sourceText.value
       sourceMode.value = false
@@ -220,6 +264,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     dirty.value = false
     recentOpen.value = false
     diffOpen.value = false
+    compareOpen.value = false
     now.value = deps.now().getTime()
     recentList.value = deps.recent.remember(path, now.value)
 
@@ -248,6 +293,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     dirty.value = false
     recentOpen.value = false
     diffOpen.value = false
+    compareOpen.value = false
     flash('新文档')
   }
 
@@ -331,6 +377,54 @@ export function createWorkspace(deps: WorkspaceDeps) {
     }
   }
 
+  /** 磁盘对照比的是「当前文件此刻在磁盘上的样子」，没有文件就没得比。 */
+  const canCompareDisk = computed(() => currentPath.value !== null)
+
+  /**
+   * ⌥⌘/ 与 ⇧⌘/：进对照视图。
+   *
+   * 进入前真相源先交回编辑器——人在源码模式里按下它，等于应用替他先按了
+   * 一次 ⌘/（ADR 0015）。之后两栏取的都是快照，编辑器不再被碰。
+   */
+  async function openCompare(kind: CompareKind) {
+    if (busy()) return
+    if (sourceMode.value) await toggleSourceMode()
+
+    if (kind === 'disk' && !currentPath.value) {
+      await deps.alert('这个文档还没有保存过，磁盘上没有可以对照的内容。先按 ⌘S 保存一次。')
+      return
+    }
+
+    const instance = editor.value
+    if (!instance) return
+    compareBlock = instance.blockIndex()
+
+    if (kind === 'plain') {
+      const blocks = instance.blocks()
+      compareRows.value = plainRows(blocks)
+      compareNote.value = `${blocks.length} 段`
+    } else {
+      const path = currentPath.value!
+      const disk = (await deps.files.read(path)).content
+      const changes = lineDiff(disk, instance.read())
+      compareRows.value = diskRows(changes)
+      compareNote.value = describeChanges(changes)
+    }
+
+    compareKind.value = kind
+    recentOpen.value = false
+    diffOpen.value = false
+    compareOpen.value = true
+  }
+
+  /** Esc 永远回写作视图，光标落回进来时那一段（ADR 0015）。 */
+  function closeCompare() {
+    if (!compareOpen.value) return
+    compareOpen.value = false
+    compareRows.value = []
+    editor.value?.focusBlock(compareBlock)
+  }
+
   async function openDiffView() {
     // 双页视图的差异本来就是源码级的，源码模式叠上去没有增量意义（ADR 0009）。
     if (sourceMode.value) await toggleSourceMode()
@@ -388,7 +482,19 @@ export function createWorkspace(deps: WorkspaceDeps) {
     }
   }
 
+  /**
+   * 点开字数：现算一次口径面板要的那几个数。
+   *
+   * ADR 0009 的 300ms 节流挡的是「为了数字数而序列化一次文档」，这里是人主动
+   * 点开的一次，那笔开销该花。
+   */
+  function toggleWordStats() {
+    wordStatsOpen.value = !wordStatsOpen.value
+    if (wordStatsOpen.value) wordStats.value = countStats(currentMarkdown())
+  }
+
   function toggleRecent() {
+    wordStatsOpen.value = false
     recentOpen.value = !recentOpen.value
     recentIndex.value = 0
     now.value = deps.now().getTime()
@@ -414,6 +520,13 @@ export function createWorkspace(deps: WorkspaceDeps) {
   }
 
   async function dispatch(intent: Intent) {
+    // 排版命令落在编辑器身上。源码模式里真相源是那块文本，不是编辑器
+    // （ADR 0009），所以那时候排版没有对象——不做，也不报错。
+    if (isFormatCommand(intent)) {
+      editor.value?.format(intent)
+      return
+    }
+
     switch (intent) {
       case 'save':
         return save()
@@ -447,6 +560,12 @@ export function createWorkspace(deps: WorkspaceDeps) {
         return
       case 'source.toggle':
         return toggleSourceMode()
+      case 'compare.plain':
+        return openCompare('plain')
+      case 'compare.disk':
+        return openCompare('disk')
+      case 'compare.close':
+        return closeCompare()
       case 'find.open':
         return openFind()
       case 'find.close':
@@ -480,12 +599,38 @@ export function createWorkspace(deps: WorkspaceDeps) {
     editor.value = null
   }
 
+  /**
+   * 眼前在哪个视图里。四个视图互斥，写作视图是「哪个都不在」（ADR 0015）。
+   * 「视图」菜单的对钩照它画。
+   */
+  const currentView = computed<ViewName>(() => {
+    if (compareOpen.value) return compareKind.value === 'plain' ? 'compare.plain' : 'compare.disk'
+    if (diffOpen.value) return 'diff'
+    if (sourceMode.value) return 'source'
+    return 'writing'
+  })
+
+  // 换了视图，口径面板就该收起来——它说的是写作视图里那份文档。
+  watch(currentView, () => {
+    wordStatsOpen.value = false
+  })
+
+  // macOS 的菜单是应用级的一份，一个窗口挂不了自己那份，所以本窗口每次换视图
+  // 都要报上去；Rust 那边只听有焦点的那个窗口的。
+  watch(
+    [currentView, canCompareDisk],
+    ([view, canDisk]) => void deps.windows.showView(view, canDisk),
+    { immediate: true }
+  )
+
   return {
     // 状态
     currentPath,
     fileName,
     dirty,
     words,
+    composing,
+    setComposing,
     toast,
     saving,
     now,
@@ -493,6 +638,14 @@ export function createWorkspace(deps: WorkspaceDeps) {
     recentList,
     recentOpen,
     recentIndex,
+    wordStatsOpen,
+    wordStats,
+    compareOpen,
+    compareKind,
+    compareRows,
+    compareNote,
+    canCompareDisk,
+    currentView,
     diffOpen,
     versions,
     versionIndex,
@@ -512,7 +665,10 @@ export function createWorkspace(deps: WorkspaceDeps) {
     requestClose,
     restoreDraft,
     toggleRecent,
+    toggleWordStats,
     toggleSourceMode,
+    openCompare,
+    closeCompare,
     editSource,
   }
 }

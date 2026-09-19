@@ -1,17 +1,108 @@
 import { Crepe } from '@milkdown/crepe'
-import { editorViewOptionsCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
+import {
+  editorViewCtx,
+  editorViewOptionsCtx,
+  remarkStringifyOptionsCtx,
+  serializerCtx,
+} from '@milkdown/kit/core'
+import type { Ctx } from '@milkdown/kit/ctx'
+import {
+  createCodeBlockCommand,
+  insertHrCommand,
+  toggleEmphasisCommand,
+  toggleInlineCodeCommand,
+  toggleLinkCommand,
+  toggleStrongCommand,
+  turnIntoTextCommand,
+  wrapInBlockquoteCommand,
+  wrapInBulletListCommand,
+  wrapInHeadingCommand,
+  wrapInOrderedListCommand,
+} from '@milkdown/kit/preset/commonmark'
+import { insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm'
+import { DOMSerializer, Fragment, type Node } from '@milkdown/kit/prose/model'
+import { TextSelection } from '@milkdown/kit/prose/state'
+import type { EditorView } from '@milkdown/kit/prose/view'
+import { $prose } from '@milkdown/kit/utils'
+import { callCommand } from '@milkdown/kit/utils'
 
+import type { FormatCommand } from './format'
 import { markdownStyle } from './markdown-style'
+import { createSourceMarks, refreshSourceMarks } from './source-marks'
 
 /**
- * 编辑器封装。对外只有四件事：挂载、销毁、取出当前文档、订阅文档变更。
- * 取出的是规范化后的 Markdown 源码——保存写的就是它。Crepe 实例不外泄
- * （ADR 0002：编辑器是文档的唯一真相源）。
+ * 排版命令的名字到 ProseMirror 命令的对照表。Milkdown 只在这个文件里出现
+ * （ADR 0002），所以这张表也只能在这里。
+ *
+ * 每一项是个 thunk，不是现成的调用：`$Command.key` 要等插件在编辑器里跑起来
+ * 才被赋值，模块加载时读到的是 undefined。
+ */
+const commands: Record<FormatCommand, () => (ctx: Ctx) => boolean> = {
+  'format.strong': () => callCommand(toggleStrongCommand.key),
+  'format.emphasis': () => callCommand(toggleEmphasisCommand.key),
+  'format.code': () => callCommand(toggleInlineCodeCommand.key),
+  'format.strikethrough': () => callCommand(toggleStrikethroughCommand.key),
+  // 空 href：链接先建出来，地址在链接气泡里填。
+  'format.link': () => callCommand(toggleLinkCommand.key, { href: '' }),
+  'block.text': () => callCommand(turnIntoTextCommand.key),
+  'block.h1': () => callCommand(wrapInHeadingCommand.key, 1),
+  'block.h2': () => callCommand(wrapInHeadingCommand.key, 2),
+  'block.h3': () => callCommand(wrapInHeadingCommand.key, 3),
+  'block.h4': () => callCommand(wrapInHeadingCommand.key, 4),
+  'block.h5': () => callCommand(wrapInHeadingCommand.key, 5),
+  'block.h6': () => callCommand(wrapInHeadingCommand.key, 6),
+  'block.quote': () => callCommand(wrapInBlockquoteCommand.key),
+  'block.bullet': () => callCommand(wrapInBulletListCommand.key),
+  'block.ordered': () => callCommand(wrapInOrderedListCommand.key),
+  'block.code': () => callCommand(createCodeBlockCommand.key),
+  'block.table': () => callCommand(insertTableCommand.key),
+  'block.rule': () => callCommand(insertHrCommand.key),
+}
+
+/**
+ * 文档的一个顶层块，两种样子并排放着：排版后的 HTML，和它的 Markdown 原文。
+ * 「原文对照」左右两栏就是这两个字段，一行一个块——对齐的单位是块，不是
+ * 视觉行（ADR 0014、ADR 0015）。
+ */
+export interface DocumentBlock {
+  html: string
+  markdown: string
+}
+
+/** 按键的修饰键。名字对齐 `KeyboardEvent`。 */
+export interface Modifiers {
+  metaKey?: boolean
+  ctrlKey?: boolean
+  shiftKey?: boolean
+  altKey?: boolean
+}
+
+/**
+ * 编辑器封装。对外是用户层面的动作：挂载、销毁、取出当前文档、订阅文档变更，
+ * 以及像用户那样打字与按键。取出的是规范化后的 Markdown 源码——保存写的就是它。
+ * Crepe 与 ProseMirror 的实例不外泄（ADR 0002：编辑器是文档的唯一真相源）。
  */
 export interface DocumentEditor {
   destroy: () => Promise<void>
   read: () => string
   onChange: (fn: (markdown: string) => void) => void
+  /** 像用户那样逐字键入：走输入规则，所以 `# ` 会变成标题。 */
+  type: (text: string) => void
+  /** 像用户那样按一个键：走 keymap，所以 Enter 会分段、⌘Z 会撤销。 */
+  press: (key: string, modifiers?: Modifiers) => void
+  /** 走一条排版命令。写作面上没有工具栏，这是「格式」「段落」两栏菜单的落点。 */
+  format: (command: FormatCommand) => void
+  /**
+   * 输入法合成的起止。合成期间纸面上不许动——字数每敲一下拼音就跳，
+   * 段上的标记每敲一下就推挤一次（ADR 0014）。
+   */
+  onComposition: (fn: (composing: boolean) => void) => void
+  /** 当前文档拆成顶层块，供「原文对照」两栏并排。 */
+  blocks: () => DocumentBlock[]
+  /** 光标落在第几个顶层块上。双页视图进入时记下它，退出时照它回来。 */
+  blockIndex: () => number
+  /** 把光标放回第几个顶层块，并聚焦。越界的下标夹到文档范围内。 */
+  focusBlock: (index: number) => void
 }
 
 export async function mountEditor(
@@ -19,13 +110,31 @@ export async function mountEditor(
   markdown: string
 ): Promise<DocumentEditor> {
   const listeners: ((markdown: string) => void)[] = []
+  const composeListeners: ((composing: boolean) => void)[] = []
+
+  const sourceMarks = createSourceMarks()
+
+  function announceComposing(composing: boolean) {
+    sourceMarks.setComposing(composing)
+    for (const fn of composeListeners) fn(composing)
+  }
+  // 挂在挂载点上而不是 ProseMirror 的 DOM 上：后者在 `crepe.create()` 之后
+  // 才存在，而且重建视图时会被换掉。
+  root.addEventListener('compositionstart', () => announceComposing(true))
+  root.addEventListener('compositionend', () => {
+    announceComposing(false)
+    // 合成被取消时后面没有事务，标记会停在合成开始那一刻。推一下让它接回来。
+    withView(refreshSourceMarks)
+  })
 
   const crepe = new Crepe({
     root,
     defaultValue: markdown,
     features: {
-      [Crepe.Feature.BlockEdit]: true,
-      [Crepe.Feature.Toolbar]: true,
+      // 这两个是 Crepe 自带的浮动工具栏——选中文字的格式条，和行首的
+      // 拖拽手柄加斜杠菜单。写作面上不要工具栏（ADR 0013），排版走菜单。
+      [Crepe.Feature.BlockEdit]: false,
+      [Crepe.Feature.Toolbar]: false,
       [Crepe.Feature.CodeMirror]: true,
       [Crepe.Feature.Table]: true,
       [Crepe.Feature.ImageBlock]: true,
@@ -39,6 +148,10 @@ export async function mountEditor(
       [Crepe.Feature.Placeholder]: { text: '开始写' },
     },
   })
+
+  // 光标所在段的 Markdown 标记（ADR 0014）。Crepe 没有这个开关，是自己写的
+  // ProseMirror 插件——`$prose` 是把一个裸插件塞进 Milkdown 的口子。
+  crepe.editor.use($prose(() => sourceMarks.plugin))
 
   crepe.editor.config((ctx) => {
     ctx.set(remarkStringifyOptionsCtx, { ...markdownStyle })
@@ -56,13 +169,113 @@ export async function mountEditor(
 
   await crepe.create()
 
+  /** 借一下视图。ProseMirror 的对象只在这个文件里出现。 */
+  function withView(fn: (view: EditorView) => void) {
+    crepe.editor.action((ctx) => fn(ctx.get(editorViewCtx)))
+  }
+
+  /**
+   * 取出文档时先去掉顶层的空段落。
+   *
+   * Markdown 里没有「空段落」这个东西——连续空行只是块之间的分隔。但编辑器
+   * 里有：按两次 Enter 留出的空行、列表或引用后面那个用来落光标的尾块，都是
+   * 货真价实的空段落节点。直接序列化，前者会写出字面的 `<br />`，后者会在
+   * 文件末尾多一个换行，两者都会让保存出来的文本不再是规范化文本（ADR 0006）。
+   *
+   * 各层都清，但不把一个容器清空：空列表项要靠里面那个空段落才写得出来。
+   */
+  function withoutEmptyParagraphs(node: Node): Node {
+    const kept: Node[] = []
+    node.forEach((child) => {
+      if (child.type.name === 'paragraph' && child.content.size === 0) return
+      kept.push(child.isBlock ? withoutEmptyParagraphs(child) : child)
+    })
+    // 清空了整个容器就不清——空列表项要留住里面那个空段落才写得出来。
+    return kept.length === 0 && node.childCount > 0 ? node : node.copy(Fragment.fromArray(kept))
+  }
+
   return {
     destroy: async () => {
       await crepe.destroy()
     },
-    read: () => crepe.getMarkdown(),
+    read: () => {
+      let markdown = ''
+      crepe.editor.action((ctx) => {
+        const doc = withoutEmptyParagraphs(ctx.get(editorViewCtx).state.doc)
+        // 清完一个块都不剩，就是一份空文档——序列化器不接受空的顶层。
+        if (doc.childCount === 0) return
+        markdown = ctx.get(serializerCtx)(doc)
+      })
+      return markdown
+    },
     onChange: (fn) => {
       listeners.push(fn)
     },
+    type: (text) =>
+      withView((view) => {
+        for (const char of text) {
+          const { from, to } = view.state.selection
+          // 先问输入规则要不要接管这一个字符；不接管才走普通插入。
+          const handled = view.someProp('handleTextInput', (fn) =>
+            fn(view, from, to, char, () => view.state.tr.insertText(char, from, to))
+          )
+          if (!handled) view.dispatch(view.state.tr.insertText(char, from, to))
+        }
+      }),
+    press: (key, modifiers = {}) =>
+      withView((view) => {
+        // 真实浏览器里 ⇧⌘Z 的 `key` 是大写 Z，ProseMirror 靠 `keyCode` 回落到
+        // 小写才对上绑定。合成事件不带 keyCode，这里得补上，否则 redo 对不上。
+        const keyCode = key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0
+        const event = new KeyboardEvent('keydown', { key, code: key, keyCode, ...modifiers })
+        view.someProp('handleKeyDown', (fn) => fn(view, event))
+      }),
+    format: (command) => {
+      crepe.editor.action(commands[command]())
+    },
+    onComposition: (fn) => {
+      composeListeners.push(fn)
+    },
+    blocks: () => {
+      const out: DocumentBlock[] = []
+      crepe.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx)
+        const serialize = ctx.get(serializerCtx)
+        const doc = withoutEmptyParagraphs(view.state.doc)
+        // 排版用编辑器自己的 schema 序列化成 DOM——纸上那一栏和写作视图里
+        // 看到的是同一套规则，不是第二个 Markdown 渲染器（ADR 0002）。
+        const toDom = DOMSerializer.fromSchema(view.state.schema)
+        doc.forEach((child) => {
+          const holder = document.createElement('div')
+          holder.appendChild(toDom.serializeNode(child))
+          out.push({
+            html: holder.innerHTML,
+            // 单块文档：序列化器只接顶层节点，所以给它套一个只装这一块的 doc。
+            markdown: serialize(doc.copy(Fragment.from(child))).trimEnd(),
+          })
+        })
+      })
+      return out
+    },
+    blockIndex: () => {
+      let index = 0
+      withView((view) => {
+        const { $from } = view.state.selection
+        index = $from.depth === 0 ? 0 : $from.index(0)
+      })
+      return index
+    },
+    focusBlock: (index) =>
+      withView((view) => {
+        const { doc } = view.state
+        if (doc.childCount === 0) return
+        const at = Math.min(Math.max(index, 0), doc.childCount - 1)
+        let pos = 1
+        for (let i = 0; i < at; i++) pos += doc.child(i).nodeSize
+        view.dispatch(
+          view.state.tr.setSelection(TextSelection.near(doc.resolve(pos))).scrollIntoView()
+        )
+        view.focus()
+      }),
   }
 }

@@ -5,6 +5,7 @@
  * 这里跑的全是工作区自己的流程。
  */
 import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 
 import type { DocumentEditor } from '../editor/editor'
 import { createFileService } from '../files/file-service'
@@ -13,6 +14,7 @@ import { createHistory } from '../history/version-store'
 import { createRecentFiles, type KeyValuePort } from '../recent/recent-files'
 import type { WindowsPort } from '../windows/windows'
 import { createDrafts } from './drafts'
+import type { Intent } from './keymap'
 import type { ConfirmChoice } from './workspace'
 import { createWorkspace } from './workspace'
 
@@ -20,7 +22,11 @@ import { createWorkspace } from './workspace'
 function fakeEditor() {
   let markdown = ''
   let listener: ((markdown: string) => void) | undefined
+  let composeListener: ((composing: boolean) => void) | undefined
   let destroyed = 0
+  let block = 0
+  const formatted: string[] = []
+  const focused: number[] = []
 
   const editor: DocumentEditor = {
     destroy: async () => void destroyed++,
@@ -28,10 +34,38 @@ function fakeEditor() {
     onChange: (fn) => {
       listener = fn
     },
+    // 假编辑器不跑输入规则：这里只关心「敲了字」这件事本身。
+    type: (text) => {
+      markdown += text
+      listener?.(markdown)
+    },
+    press: () => {},
+    // 假编辑器不排版，只记下收到了哪条命令——真的排版在编辑器层验。
+    format: (command) => void formatted.push(command),
+    onComposition: (fn) => {
+      composeListener = fn
+    },
+    // 假编辑器不排版：块就是空行分段，HTML 是原文本身。真的排版在编辑器层验。
+    blocks: () =>
+      markdown
+        .split(/\n{2,}/)
+        .filter((part) => part.trim() !== '')
+        .map((part) => ({ html: part, markdown: part })),
+    blockIndex: () => block,
+    focusBlock: (index) => {
+      block = index
+      focused.push(index)
+    },
   }
 
   return {
     editor,
+    formatted,
+    focused,
+    /** 模拟用户把光标放到第几段。 */
+    putCursor(index: number) {
+      block = index
+    },
     get destroyed() {
       return destroyed
     },
@@ -42,6 +76,10 @@ function fakeEditor() {
     },
     setContent(next: string) {
       markdown = next
+    },
+    /** 模拟输入法：合成开始、合成中敲字、合成结束。 */
+    compose(composing: boolean) {
+      composeListener?.(composing)
     },
   }
 }
@@ -77,12 +115,14 @@ function setup(options: {
   const drafts = createDrafts(memoryStore())
   const claimed: (string | null)[] = []
   const opened: string[][] = []
+  const shownViews: { view: string; canCompareDisk: boolean }[] = []
   const windows: WindowsPort = {
     claim: async (path) => void claimed.push(path),
     focusIfOpen: async (path) => (options.openElsewhere ?? []).includes(path),
     openFiles: async (paths) => void opened.push(paths),
     openDrafts: async () => {},
     boot: async () => ({ path: null, draft: null, startupPaths: [] }),
+    showView: async (view, canCompareDisk) => void shownViews.push({ view, canCompareDisk }),
   }
 
   const workspace = createWorkspace({
@@ -113,6 +153,7 @@ function setup(options: {
     editors,
     drafts,
     claimed,
+    shownViews,
     opened,
     current: () => editors[editors.length - 1]!,
     advance: (ms: number) => {
@@ -452,6 +493,29 @@ describe('工作区 · 字数', () => {
 
     expect(t.workspace.words.value).toBe(7)
   })
+
+  it('输入法合成期间字数不动，合成结束才补上', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('今天')
+
+    t.current().compose(true)
+    // 候选框还开着，纸面上是拼音串 —— 它还不是文档。
+    t.current().type('今天zhongwen')
+    expect(t.workspace.words.value).toBe(2)
+
+    t.current().compose(false)
+    expect(t.workspace.words.value).toBe(10)
+  })
+
+  it('合成期间照样置脏——脏是个开关，不会跳', async () => {
+    const t = setup()
+    await t.start()
+    t.current().compose(true)
+    t.current().type('zhong')
+
+    expect(t.workspace.dirty.value).toBe(true)
+  })
 })
 
 describe('工作区 · 源码模式', () => {
@@ -688,5 +752,186 @@ describe('工作区 · 多窗口', () => {
     await t.workspace.run('new')
 
     expect(t.claimed).toEqual(['/notes/a.md', null])
+  })
+})
+
+describe('工作区 · 对照视图', () => {
+  it('没有当前文件时磁盘对照进不去，也不静默——菜单项据此置灰', async () => {
+    const t = setup()
+    await t.start()
+
+    expect(t.workspace.canCompareDisk.value).toBe(false)
+    await t.workspace.run('compare.disk')
+
+    expect(t.workspace.compareOpen.value).toBe(false)
+    expect(t.alert).toHaveBeenCalledOnce()
+  })
+
+  it('有文件但一个字没改，照样进得去，计数条说「没有改动」', async () => {
+    const t = setup({ seed: { '/notes/a.md': '一样的内容' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+
+    await t.workspace.run('compare.disk')
+
+    expect(t.workspace.canCompareDisk.value).toBe(true)
+    expect(t.workspace.compareOpen.value).toBe(true)
+    expect(t.workspace.compareNote.value).toBe('没有改动')
+  })
+
+  it('改了字不保存：左栏是磁盘上那份，右栏是当前这份', async () => {
+    const t = setup({ seed: { '/notes/a.md': '磁盘上的' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+    t.current().type('改过的')
+
+    await t.workspace.run('compare.disk')
+
+    const rows = t.workspace.compareRows.value
+    expect(rows.map((row) => row.left.text)).toContain('磁盘上的')
+    expect(rows.map((row) => row.right.text)).toContain('改过的')
+    expect(t.workspace.compareNote.value).toBe('1 行新增 · 1 行删除')
+  })
+
+  it('原文对照一行一个块，右栏是那个块的原文', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('# 标题\n\n正文')
+
+    await t.workspace.run('compare.plain')
+
+    expect(t.workspace.compareKind.value).toBe('plain')
+    expect(t.workspace.compareRows.value.map((row) => row.right.text)).toEqual(['# 标题', '正文'])
+    expect(t.workspace.compareNote.value).toBe('2 段')
+  })
+
+  it('人在源码模式里按下它，先把真相源交回编辑器再进——退出后停在写作视图', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('正文')
+    await t.workspace.run('source.toggle')
+    expect(t.workspace.sourceMode.value).toBe(true)
+
+    await t.workspace.run('compare.plain')
+    expect(t.workspace.sourceMode.value).toBe(false)
+    expect(t.workspace.compareOpen.value).toBe(true)
+
+    await t.workspace.run('compare.close')
+    expect(t.workspace.compareOpen.value).toBe(false)
+    expect(t.workspace.sourceMode.value).toBe(false)
+  })
+
+  it('退出时光标落回进来时那一段', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('甲\n\n乙\n\n丙')
+    t.current().putCursor(2)
+
+    await t.workspace.run('compare.plain')
+    await t.workspace.run('compare.close')
+
+    expect(t.current().focused).toEqual([2])
+  })
+
+  it('进出一趟不置脏——快照是只读的', async () => {
+    const t = setup({ seed: { '/notes/a.md': '内容' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+
+    await t.workspace.run('compare.plain')
+    await t.workspace.run('compare.close')
+
+    expect(t.workspace.dirty.value).toBe(false)
+  })
+})
+
+describe('工作区 · 报上去的视图', () => {
+  it('一开始就报一次写作视图，磁盘对照不可用', async () => {
+    const t = setup()
+    await t.start()
+
+    expect(t.shownViews[0]).toEqual({ view: 'writing', canCompareDisk: false })
+  })
+
+  it('四个视图各报各的名字，回到写作视图也报', async () => {
+    const t = setup({ seed: { '/notes/a.md': '内容' } })
+    await t.start()
+    await t.workspace.openPath('/notes/a.md')
+
+    for (const intent of ['source.toggle', 'compare.plain', 'compare.disk', 'compare.close']) {
+      await t.workspace.run(intent as Intent)
+      await nextTick()
+    }
+
+    // 报上去的是「换到了哪个视图」，不是「按了哪个键」——compare.close 报的是写作视图。
+    // 从源码模式进对照要先把真相源交回编辑器，那一步是真的异步（要重新挂载
+    // 编辑器），所以中间会掠过一次写作视图。菜单在那一瞬间一个钩都不打。
+    expect(t.shownViews.map((entry) => entry.view).join(' ')).toBe(
+      'writing writing source writing compare.plain compare.disk writing'
+    )
+  })
+
+  it('开了文件之后磁盘对照才可用——菜单据此置灰', async () => {
+    const t = setup({ seed: { '/notes/a.md': '内容' } })
+    await t.start()
+    expect(t.workspace.canCompareDisk.value).toBe(false)
+
+    await t.workspace.openPath('/notes/a.md')
+    await nextTick()
+
+    expect(t.shownViews.at(-1)).toEqual({ view: 'writing', canCompareDisk: true })
+  })
+})
+
+describe('工作区 · 字数口径面板', () => {
+  it('点开时按当前那份原文现算，再点收起', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('# 标题\n\n一段')
+
+    t.workspace.toggleWordStats()
+    expect(t.workspace.wordStatsOpen.value).toBe(true)
+    expect(t.workspace.wordStats.value).toEqual({
+      words: 8,
+      paragraphs: 2,
+      lines: 3,
+      minutes: 1,
+    })
+
+    t.workspace.toggleWordStats()
+    expect(t.workspace.wordStatsOpen.value).toBe(false)
+  })
+
+  it('源码模式里数的是源码那份——真相源在谁手上就问谁（ADR 0009）', async () => {
+    const t = setup()
+    await t.start()
+    t.current().type('原来的')
+    await t.workspace.run('source.toggle')
+    t.workspace.editSource('改过之后长一些')
+
+    t.workspace.toggleWordStats()
+
+    expect(t.workspace.wordStats.value.words).toBe('改过之后长一些'.length)
+  })
+
+  it('换到别的视图，口径面板收起来', async () => {
+    const t = setup()
+    await t.start()
+    t.workspace.toggleWordStats()
+
+    await t.workspace.run('compare.plain')
+    await nextTick()
+
+    expect(t.workspace.wordStatsOpen.value).toBe(false)
+  })
+
+  it('开最近文件时也收起来——两个浮层不叠着', async () => {
+    const t = setup()
+    await t.start()
+    t.workspace.toggleWordStats()
+
+    t.workspace.toggleRecent()
+
+    expect(t.workspace.wordStatsOpen.value).toBe(false)
   })
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import rustSource from '../../src-tauri/src/lib.rs?raw'
 import { intentOf, type Mode } from './keymap'
 
 const cmd = (key: string, shiftKey = false) => ({ key, metaKey: true, shiftKey })
@@ -86,5 +87,51 @@ describe('源码模式与查找条', () => {
 
   it('查找条开着时 ⌘/ 仍然切模式', () => {
     expect(intentOf(cmd('/'), 'find')).toBe('source.toggle')
+  })
+})
+
+describe('对照视图', () => {
+  it('⌥⌘/ 进原文对照，⇧⌘/ 进磁盘对照，光秃秃的 ⌘/ 还是源码模式', () => {
+    expect(intentOf({ key: '/', metaKey: true }, 'writing')).toBe('source.toggle')
+    expect(intentOf({ key: '/', metaKey: true, altKey: true }, 'writing')).toBe('compare.plain')
+    expect(intentOf({ key: '/', metaKey: true, shiftKey: true }, 'writing')).toBe('compare.disk')
+  })
+
+  it('⌥ 把这个键变成 ÷，认的是同一个意图', () => {
+    expect(intentOf({ key: '÷', metaKey: true, altKey: true }, 'writing')).toBe('compare.plain')
+  })
+
+  it('对照视图里 Esc 出去，换到别的视图放行，其余吞掉', () => {
+    expect(intentOf({ key: 'Escape' }, 'compare')).toBe('compare.close')
+    expect(intentOf({ key: '/', metaKey: true }, 'compare')).toBe('source.toggle')
+    expect(intentOf({ key: '/', metaKey: true, shiftKey: true }, 'compare')).toBe('compare.disk')
+    expect(intentOf({ key: 'h', metaKey: true, shiftKey: true }, 'compare')).toBe('diff.open')
+    expect(intentOf({ key: 's', metaKey: true }, 'compare')).toBe('swallow')
+    expect(intentOf({ key: 'a', metaKey: true }, 'compare')).toBe('swallow')
+  })
+})
+
+describe('「视图」菜单与意图对得上', () => {
+  /**
+   * 跨语言的一条：Rust 的 `VIEW_ITEMS` 就是这边的四个视图意图。对不上的话
+   * 菜单点下去静默地什么都不做，两边各自的测试都抓不到（同 ADR 0015）。
+   */
+  // ?raw：不引 node:fs，这份 tsconfig 没有 node 的类型。
+  const rust: string = rustSource
+  const block = /const VIEW_ITEMS: \[&str; 4\] = \[([^\]]*)\]/.exec(rust)?.[1] ?? ''
+  const ids = [...block.matchAll(/"([^"]+)"/g)].map((match) => match[1])
+
+  it('四项就是这四个意图，顺序也是菜单里的顺序', () => {
+    expect(ids).toEqual(['source.toggle', 'compare.plain', 'compare.disk', 'diff.open'])
+  })
+
+  it('每一项都是键盘也发得出来的意图', () => {
+    const fromKeys = [
+      intentOf({ key: '/', metaKey: true }, 'writing'),
+      intentOf({ key: '/', metaKey: true, altKey: true }, 'writing'),
+      intentOf({ key: '/', metaKey: true, shiftKey: true }, 'writing'),
+      intentOf({ key: 'h', metaKey: true, shiftKey: true }, 'writing'),
+    ]
+    expect(fromKeys).toEqual(ids)
   })
 })
