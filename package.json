@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "test:rust": "cd src-tauri && cargo test",
+    "test:rust": "cd src-tauri && cargo test --lib --bins",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "check": "bun run typecheck && bun run test && bun run test:rust"
